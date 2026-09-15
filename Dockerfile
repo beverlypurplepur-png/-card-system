@@ -30,5 +30,5 @@ RUN mv /app/static /app/official-static \
     && mv /app/official-static/admin /app/static/admin
 COPY --from=web-build /src/packages/frontend/apps/web/dist/ /app/static/
 
-# Inherit the official entrypoint and CMD: node ./dist/main.js.
-# Migrations are deliberately not part of this image's build or startup.
+# Run AFFiNE self-host predeploy/migrations before starting the server.
+CMD ["sh", "-c", "node ./scripts/self-host-predeploy.js && exec node ./dist/main.js"]
