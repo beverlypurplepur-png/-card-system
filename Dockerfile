@@ -7,7 +7,7 @@ COPY . .
 
 # Match the upstream release's frontend version, inside the build container only.
 # Disable install hooks so no backend/native or other application is built.
-RUN yarn install --immutable --mode=skip-builds
+RUN yarn install --immutable
 RUN node -e "const fs = require('node:fs'); const p = 'packages/frontend/apps/web/package.json'; const pkg = JSON.parse(fs.readFileSync(p, 'utf8')); pkg.version = '2026.9.13-canary.928'; fs.writeFileSync(p, JSON.stringify(pkg, null, 2) + '\n');"
 
 # .git is excluded from the context; the HTML generator needs a revision.
