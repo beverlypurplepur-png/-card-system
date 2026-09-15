@@ -93,7 +93,7 @@ export const EditorModeSwitch = () => {
     <PureEditorModeSwitch
       mode={currentMode}
       setMode={onModeChange}
-      hidePage={shouldHide('page')}
+      hidePage={true || shouldHide('page')}
       hideEdgeless={shouldHide('edgeless')}
     />
   );

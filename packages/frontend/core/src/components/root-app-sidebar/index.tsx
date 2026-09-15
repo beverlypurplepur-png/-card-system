@@ -212,23 +212,25 @@ export const RootAppSidebar = memo((): ReactElement => {
           <AddPageButton />
         </div>
         <AllDocsButton />
-        <AppSidebarJournalButton />
+        {false && <AppSidebarJournalButton />}
         {sessionStatus === 'authenticated' && <NotificationButton />}
-        <AIChatButton />
-        <MenuItem
-          data-testid="slider-bar-workspace-setting-button"
-          icon={<SettingsIcon />}
-          onClick={onOpenSettingModal}
-        >
-          <span data-testid="settings-modal-trigger">
-            {t['com.affine.settingSidebar.title']()}
-          </span>
-        </MenuItem>
+        {false && <AIChatButton />}
+        {false && (
+          <MenuItem
+            data-testid="slider-bar-workspace-setting-button"
+            icon={<SettingsIcon />}
+            onClick={onOpenSettingModal}
+          >
+            <span data-testid="settings-modal-trigger">
+              {t['com.affine.settingSidebar.title']()}
+            </span>
+          </MenuItem>
+        )}
       </SidebarContainer>
       <SidebarScrollableContainer>
-        <NavigationPanelFavorites />
+        {false && <NavigationPanelFavorites />}
         <NavigationPanelOrganize />
-        <NavigationPanelMigrationFavorites />
+        {false && <NavigationPanelMigrationFavorites />}
         <NavigationPanelTags />
         <NavigationPanelCollections />
         <CollapsibleSection
@@ -237,20 +239,24 @@ export const RootAppSidebar = memo((): ReactElement => {
           contentStyle={{ padding: '6px 8px 0 8px' }}
         >
           <TrashButton />
-          <MenuItem
-            data-testid="slider-bar-import-button"
-            icon={<ImportIcon />}
-            onClick={onOpenImportModal}
-          >
-            <span data-testid="import-modal-trigger">{t['Import']()}</span>
-          </MenuItem>
+          {false && (
+            <MenuItem
+              data-testid="slider-bar-import-button"
+              icon={<ImportIcon />}
+              onClick={onOpenImportModal}
+            >
+              <span data-testid="import-modal-trigger">{t['Import']()}</span>
+            </MenuItem>
+          )}
           <InviteMembersButton />
-          <TemplateDocEntrance />
-          <ExternalMenuLinkItem
-            href="https://affine.pro/blog?tag=Release+Note"
-            icon={<JournalIcon />}
-            label={t['com.affine.app-sidebar.learn-more']()}
-          />
+          {false && <TemplateDocEntrance />}
+          {false && (
+            <ExternalMenuLinkItem
+              href="https://affine.pro/blog?tag=Release+Note"
+              icon={<JournalIcon />}
+              label={t['com.affine.app-sidebar.learn-more']()}
+            />
+          )}
         </CollapsibleSection>
       </SidebarScrollableContainer>
       <SidebarContainer className={bottomContainer}>

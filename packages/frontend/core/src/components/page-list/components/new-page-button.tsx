@@ -31,14 +31,16 @@ export const CreateNewPagePopup = ({
         padding: '8px',
       }}
     >
-      <BlockCard
-        title={t['com.affine.new.page-mode']()}
-        desc={t['com.affine.write_with_a_blank_page']()}
-        right={<PageIcon width={20} height={20} />}
-        onClick={createNewPage}
-        onAuxClick={createNewPage}
-        data-testid="new-page-button-in-all-page"
-      />
+      {false && (
+        <BlockCard
+          title={t['com.affine.new.page-mode']()}
+          desc={t['com.affine.write_with_a_blank_page']()}
+          right={<PageIcon width={20} height={20} />}
+          onClick={createNewPage}
+          onAuxClick={createNewPage}
+          data-testid="new-page-button-in-all-page"
+        />
+      )}
       <BlockCard
         title={t['com.affine.new_edgeless']()}
         desc={t['com.affine.draw_with_a_blank_whiteboard']()}

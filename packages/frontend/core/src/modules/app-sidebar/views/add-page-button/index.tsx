@@ -115,13 +115,15 @@ function AddPageWithAsk({ className, style }: AddPageButtonProps) {
     <Menu
       items={
         <>
-          <MenuItem
-            prefixIcon={<PageIcon />}
-            onClick={createPage}
-            onAuxClick={createPage}
-          >
-            {t['Page']()}
-          </MenuItem>
+          {false && (
+            <MenuItem
+              prefixIcon={<PageIcon />}
+              onClick={createPage}
+              onAuxClick={createPage}
+            >
+              {t['Page']()}
+            </MenuItem>
+          )}
           <MenuItem
             prefixIcon={<EdgelessIcon />}
             onClick={createEdgeless}

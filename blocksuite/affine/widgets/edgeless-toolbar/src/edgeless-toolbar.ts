@@ -517,22 +517,24 @@ export class EdgelessToolbarWidget extends WidgetComponent<RootBlockModel> {
             tool => html`<div class="quick-tool-item">${tool.content}</div>`
           )}
       </div>
-      <div class="quick-tool-more">
-        <icon-button
-          ?disabled=${!this._denseQuickTools}
-          .size=${20}
-          class="quick-tool-more-button"
-          @click=${this._openMoreQuickToolsMenu}
-          ?active=${this._quickTools
-            .slice(this._visibleQuickToolSize)
-            .some(tool => tool.type === this.edgelessTool)}
-        >
-          ${MoreHorizontalIcon({ width: '20px', height: '20px' })}
-          <affine-tooltip tip-position="top" .offset=${25}>
-            More Tools
-          </affine-tooltip>
-        </icon-button>
-      </div>
+      ${false
+        ? html`<div class="quick-tool-more">
+            <icon-button
+              ?disabled=${!this._denseQuickTools}
+              .size=${20}
+              class="quick-tool-more-button"
+              @click=${this._openMoreQuickToolsMenu}
+              ?active=${this._quickTools
+                .slice(this._visibleQuickToolSize)
+                .some(tool => tool.type === this.edgelessTool)}
+            >
+              ${MoreHorizontalIcon({ width: '20px', height: '20px' })}
+              <affine-tooltip tip-position="top" .offset=${25}>
+                More Tools
+              </affine-tooltip>
+            </icon-button>
+          </div>`
+        : nothing}
       <div class="full-divider"></div>
       <div class="senior-nav-button-wrapper prev">
         <icon-button
@@ -557,8 +559,10 @@ export class EdgelessToolbarWidget extends WidgetComponent<RootBlockModel> {
             this.scrollSeniorToolIndex,
             this.scrollSeniorToolIndex + this.scrollSeniorToolSize
           )
-          .map(
-            tool => html`<div class="senior-tool-item">${tool.content}</div>`
+          .map(tool =>
+            tool.name === 'Shape' || tool.name === 'Template'
+              ? nothing
+              : html`<div class="senior-tool-item">${tool.content}</div>`
           )}
       </div>
       <div class="senior-nav-button-wrapper next">
