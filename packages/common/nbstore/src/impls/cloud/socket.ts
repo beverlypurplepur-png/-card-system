@@ -222,6 +222,32 @@ class SocketManager {
         }
       },
     });
+    this.socket.on('connect_error', error => {
+      console.error('[SYNC-DIAG] socket transport diagnostic', {
+        event: 'connect_error',
+        endpoint,
+        origin: globalThis.location?.origin,
+        path: '/socket.io',
+        transport: this.socket.io.engine?.transport.name,
+        message: error.message,
+        data: error.data,
+        description: error.description,
+      });
+    });
+    this.socket.io.on('open', () => {
+      const engine = this.socket.io.engine;
+      engine?.once('close', (reason, description) => {
+        console.error('[SYNC-DIAG] socket transport diagnostic', {
+          event: 'engine_close',
+          endpoint,
+          origin: globalThis.location?.origin,
+          path: '/socket.io',
+          transport: engine.transport.name,
+          reason,
+          description,
+        });
+      });
+    });
     this.socket.onAnyOutgoing((event, payload) => {
       if (event === 'space:push-doc-update') {
         console.info('[SYNC-DIAG] socket push emitted', {
