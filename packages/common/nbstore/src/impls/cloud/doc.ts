@@ -162,8 +162,23 @@ export class CloudDocStorage extends DocStorageBase<CloudDocStorageOptions> {
       stateVector: state ? await uint8ArrayToBase64(state) : void 0,
     });
 
+    if (docId === this.spaceId) {
+      console.info('[SYNC-DIAG] diff load ACK', {
+        workspaceId: this.spaceId,
+        docId,
+        result:
+          'error' in response
+            ? response
+            : { success: true, timestamp: response.data.timestamp },
+      });
+    }
     if ('error' in response) {
       if (response.error.name === 'DOC_NOT_FOUND') {
+        if (docId === this.spaceId)
+          console.info('[SYNC-DIAG] diff DOC_NOT_FOUND -> null', {
+            workspaceId: this.spaceId,
+            docId,
+          });
         return null;
       }
       // TODO: use [UserFriendlyError]
@@ -179,6 +194,11 @@ export class CloudDocStorage extends DocStorageBase<CloudDocStorageOptions> {
   }
 
   override async pushDocUpdate(update: DocUpdate) {
+    console.info('[SYNC-DIAG] push prepare (before join)', {
+      workspaceId: this.spaceId,
+      docId: update.docId,
+      bytes: update.bin.byteLength,
+    });
     const response = await this.socket.emitWithAck('space:push-doc-update', {
       spaceType: this.spaceType,
       spaceId: this.spaceId,
@@ -188,6 +208,11 @@ export class CloudDocStorage extends DocStorageBase<CloudDocStorageOptions> {
       update: await uint8ArrayToBase64(update.bin),
     });
 
+    console.info('[SYNC-DIAG] push ACK', {
+      workspaceId: this.spaceId,
+      docId: update.docId,
+      result: response,
+    });
     if ('error' in response) {
       // TODO(@forehalo): use [UserFriendlyError]
       throw createWebsocketError(response.error);
@@ -305,6 +330,11 @@ class CloudDocStorageConnection extends SocketConnection {
       ],
       clientVersion: BUILD_CONFIG.appVersion,
     });
+    console.info('[SYNC-DIAG] join ACK', {
+      workspaceId: this.options.id,
+      docId,
+      result: res,
+    });
     if ('error' in res) throw createWebsocketError(res.error);
     if (!res.data.success) throw new Error('Space join was rejected');
     this.joinedDocIds.add(docId);
@@ -312,6 +342,10 @@ class CloudDocStorageConnection extends SocketConnection {
   }
 
   override async doConnect(signal?: AbortSignal) {
+    console.info('[SYNC-DIAG] doConnect start', {
+      workspaceId: this.options.id,
+      rootDocId: this.options.id,
+    });
     const { socket, disconnect } = await super.doConnect(signal);
 
     try {
@@ -324,8 +358,16 @@ class CloudDocStorageConnection extends SocketConnection {
       socket.on('space:broadcast-doc-updates', this.onServerUpdates);
       socket.on('space:broadcast-doc-invalidation', this.onServerInvalidation);
 
+      console.info('[SYNC-DIAG] doConnect ready', {
+        workspaceId: this.options.id,
+      });
       return { socket, disconnect };
     } catch (e) {
+      console.error('[SYNC-DIAG] doConnect catch -> doDisconnect', {
+        workspaceId: this.options.id,
+        code: e instanceof Error ? e.name : undefined,
+        message: e instanceof Error ? e.message : String(e),
+      });
       this.doDisconnect({ socket, disconnect });
       throw e;
     }
@@ -338,6 +380,10 @@ class CloudDocStorageConnection extends SocketConnection {
     socket: Socket;
     disconnect: () => void;
   }) {
+    console.info('[SYNC-DIAG] CloudDoc doDisconnect', {
+      workspaceId: this.options.id,
+      caller: new Error().stack,
+    });
     const docIds = [...this.joinedDocIds];
     this.joinedDocIds.clear();
     for (
@@ -371,8 +417,20 @@ class CloudDocStorageConnection extends SocketConnection {
             docId: id,
           });
 
+          console.info('[SYNC-DIAG] initial load ACK', {
+            workspaceId: this.options.id,
+            docId: id,
+            result:
+              'error' in response
+                ? response
+                : { success: true, timestamp: response.data.timestamp },
+          });
           if ('error' in response) {
             if (response.error.name === 'DOC_NOT_FOUND') {
+              console.info('[SYNC-DIAG] initial load DOC_NOT_FOUND -> null', {
+                workspaceId: this.options.id,
+                docId: id,
+              });
               return null;
             }
             // TODO: use [UserFriendlyError]

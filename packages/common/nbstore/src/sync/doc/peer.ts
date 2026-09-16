@@ -268,6 +268,15 @@ export class DocSyncPeer {
         (await this.syncMetadata.getPeerPushedClock(this.peerId, docId))
           ?.timestamp ?? null;
       const clock = await this.local.getDocTimestamp(docId);
+      if (docId === this.local.spaceId) {
+        console.info('[SYNC-DIAG] root connect clocks', {
+          docId,
+          peerId: this.peerId,
+          localTimestamp: clock?.timestamp,
+          pushedClock,
+          readonly: this.remote.isReadonly,
+        });
+      }
 
       throwIfAborted(signal);
       if (
@@ -276,8 +285,18 @@ export class DocSyncPeer {
         (pushedClock === null ||
           pushedClock.getTime() < clock.timestamp.getTime())
       ) {
+        if (docId === this.local.spaceId)
+          console.info('[SYNC-DIAG] root connect -> pullAndPush', {
+            docId,
+            peerId: this.peerId,
+          });
         await this.jobs.pullAndPush(docId, signal);
       } else {
+        if (docId === this.local.spaceId)
+          console.info('[SYNC-DIAG] root no need to push', {
+            docId,
+            peerId: this.peerId,
+          });
         // no need to push
         const pulled =
           (await this.syncMetadata.getPeerPulledRemoteClock(this.peerId, docId))
@@ -344,6 +363,14 @@ export class DocSyncPeer {
           ? encodeStateVectorFromUpdate(localDocRecord.bin)
           : new Uint8Array();
       const remoteDocRecord = await this.remote.getDocDiff(docId, stateVector);
+      if (docId === this.local.spaceId) {
+        console.info('[SYNC-DIAG] root pullAndPush diff', {
+          docId,
+          peerId: this.peerId,
+          remoteIsNull: remoteDocRecord === null,
+          localBytes: localDocRecord?.bin.byteLength,
+        });
+      }
 
       if (remoteDocRecord) {
         const {
@@ -398,6 +425,11 @@ export class DocSyncPeer {
         if (localDocRecord) {
           if (!isEmptyUpdate(localDocRecord.bin)) {
             throwIfAborted(signal);
+            if (docId === this.local.spaceId)
+              console.info('[SYNC-DIAG] root full upload prepare', {
+                docId,
+                peerId: this.peerId,
+              });
             const { timestamp: remoteClock } = await this.remote.pushDocUpdate(
               {
                 bin: localDocRecord.bin,
@@ -577,6 +609,13 @@ export class DocSyncPeer {
       try {
         await this.retryLoop(signal);
       } catch (err) {
+        console.warn('[SYNC-DIAG] peer sync catch', {
+          rootDocId: this.local.spaceId,
+          peerId: this.peerId,
+          aborted: signal?.aborted ?? false,
+          code: err instanceof Error ? err.name : undefined,
+          message: err instanceof Error ? err.message : String(err),
+        });
         if (signal?.aborted) {
           return;
         }
@@ -860,6 +899,12 @@ export class DocSyncPeer {
       await job();
       return true;
     } catch (error) {
+      console.warn('[SYNC-DIAG] doc job catch', {
+        docId,
+        peerId: this.peerId,
+        code: error instanceof Error ? error.name : undefined,
+        message: error instanceof Error ? error.message : String(error),
+      });
       if (!isRemotePermissionError(error)) {
         throw error;
       }

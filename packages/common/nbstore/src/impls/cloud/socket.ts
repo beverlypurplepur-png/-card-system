@@ -222,6 +222,26 @@ class SocketManager {
         }
       },
     });
+    this.socket.onAnyOutgoing((event, payload) => {
+      if (event === 'space:push-doc-update') {
+        console.info('[SYNC-DIAG] socket push emitted', {
+          socketId: this.socket.id,
+          workspaceId: payload?.spaceId,
+          docId: payload?.docId,
+        });
+      }
+    });
+    this.socket.on('disconnect', reason => {
+      console.info('[SYNC-DIAG] socket disconnect event', {
+        reason,
+        origin:
+          reason === 'io server disconnect'
+            ? 'server'
+            : reason === 'io client disconnect'
+              ? 'client'
+              : 'transport',
+      });
+    });
   }
 
   connect() {
@@ -237,6 +257,9 @@ class SocketManager {
         disconnected = true;
         this.refCount--;
         if (this.refCount === 0) {
+          console.info('[SYNC-DIAG] client socket.disconnect: refCount=0', {
+            caller: new Error().stack,
+          });
           this.socket.disconnect();
         }
       },
@@ -244,6 +267,10 @@ class SocketManager {
   }
 
   reset() {
+    console.info(
+      '[SYNC-DIAG] client socket.disconnect: resetSharedConnection',
+      { caller: new Error().stack }
+    );
     this.socket.disconnect();
   }
 }
@@ -306,6 +333,10 @@ export class SocketConnection extends AutoReconnectConnection<{
         }),
       ]);
     } catch (err) {
+      console.error('[SYNC-DIAG] socket connect catch -> disconnect', {
+        code: err instanceof Error ? err.name : undefined,
+        message: err instanceof Error ? err.message : String(err),
+      });
       disconnect();
       throw err;
     }
