@@ -119,6 +119,11 @@ export class StoreManagerClient {
     const connection = {
       store: new StoreClient(client),
       dispose: () => {
+        console.warn('[SYNC-DIAG] store connection dispose -> worker close', {
+          key,
+          closeKey,
+          caller: new Error().stack,
+        });
         this.client.call('close', closeKey).catch(err => {
           console.error('error closing', err);
         });
