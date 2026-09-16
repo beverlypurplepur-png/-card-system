@@ -5,16 +5,17 @@ WORKDIR /src
 RUN corepack enable
 COPY . .
 
-# Match the upstream release's frontend version, inside the build container only.
 # Disable install hooks so no backend/native or other application is built.
 RUN yarn install --immutable
-RUN node -e "const fs = require('node:fs'); const p = 'packages/frontend/apps/web/package.json'; const pkg = JSON.parse(fs.readFileSync(p, 'utf8')); pkg.version = '2026.9.13-canary.928'; fs.writeFileSync(p, JSON.stringify(pkg, null, 2) + '\n');"
+# Production sync rejects date-form canary client versions. Keep the source version.
+RUN node -e "require('node:assert/strict').equal(require('./packages/frontend/apps/web/package.json').version, '0.27.5')"
 
 # .git is excluded from the context; the HTML generator needs a revision.
 ARG RAILWAY_GIT_COMMIT_SHA=638132866b774c6d2458c88273302873768d76eb
 RUN GITHUB_SHA="$RAILWAY_GIT_COMMIT_SHA" BUILD_TYPE=canary PUBLIC_PATH=/ \
     yarn affine @affine/web build
-RUN test -s packages/frontend/apps/web/dist/selfhost.html
+RUN test -s packages/frontend/apps/web/dist/selfhost.html \
+    && test -s packages/frontend/apps/web/dist/js/nbstore-0.27.5.worker.js
 
 # Official 2026.9.13-canary.928, whose amd64 provenance identifies upstream
 # 868acf8505eb349223e367ef75070d24eb04f7ad (the parent of our UI-only commit).
