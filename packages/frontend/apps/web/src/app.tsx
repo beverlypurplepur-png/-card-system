@@ -25,7 +25,7 @@ const cache = createEmotionCache();
 
 let storeManagerClient: StoreManagerClient;
 
-const workerUrl = getWorkerUrl('nbstore');
+const workerUrl = `${getWorkerUrl('nbstore')}?sync-diag=1`;
 
 if (
   window.SharedWorker &&
