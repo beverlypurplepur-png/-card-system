@@ -1,3 +1,4 @@
+import { renderToolbarIconButton } from '@blocksuite/affine-components/toolbar';
 import { getSelectedModelsCommand } from '@blocksuite/affine-shared/commands';
 import { type VirtualKeyboardProviderWithAction } from '@blocksuite/affine-shared/services';
 import { SignalWatcher, WithDisposable } from '@blocksuite/global/lit';
@@ -211,16 +212,14 @@ export class AffineKeyboardToolbar extends SignalWatcher(
         style = styleMap({ background: activeBackground });
     }
 
-    return html`<icon-button
-      size="36px"
-      style=${style}
-      ?disabled=${disabled}
-      @click=${() => {
+    return renderToolbarIconButton({
+      icon: this._renderIcon(icon),
+      style,
+      disabled,
+      onClick: () => {
         this._handleItemClick(item, index);
-      }}
-    >
-      ${this._renderIcon(icon)}
-    </icon-button>`;
+      },
+    });
   }
 
   private _renderItems() {

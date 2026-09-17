@@ -21,6 +21,7 @@ import { insertSurfaceRefBlockCommand } from '@blocksuite/affine-block-surface-r
 import { insertTableBlockCommand } from '@blocksuite/affine-block-table';
 import { toggleEmbedCardCreateModal } from '@blocksuite/affine-components/embed-card-modal';
 import { toast } from '@blocksuite/affine-components/toast';
+import { undoRedoActions } from '@blocksuite/affine-components/toolbar';
 import { insertInlineLatex } from '@blocksuite/affine-inline-latex';
 import { toggleLink } from '@blocksuite/affine-inline-link';
 import {
@@ -88,7 +89,6 @@ import {
   NumberedListIcon,
   PlusIcon,
   QuoteIcon,
-  RedoIcon,
   RightTabIcon,
   StrikeThroughIcon,
   TableIcon,
@@ -97,7 +97,6 @@ import {
   TodayIcon,
   TomorrowIcon,
   UnderLineIcon,
-  UndoIcon,
   YesterdayIcon,
   YoutubeDuotoneIcon,
 } from '@blocksuite/icons/lit';
@@ -1118,22 +1117,7 @@ export const defaultKeyboardToolbarConfig: KeyboardToolbarConfig = {
         }
       },
     },
-    {
-      name: 'Undo',
-      icon: UndoIcon(),
-      disableWhen: ({ std }) => !std.store.canUndo,
-      action: ({ std }) => {
-        std.store.undo();
-      },
-    },
-    {
-      name: 'Redo',
-      icon: RedoIcon(),
-      disableWhen: ({ std }) => !std.store.canRedo,
-      action: ({ std }) => {
-        std.store.redo();
-      },
-    },
+    ...undoRedoActions,
     {
       name: 'RightTab',
       icon: RightTabIcon(),

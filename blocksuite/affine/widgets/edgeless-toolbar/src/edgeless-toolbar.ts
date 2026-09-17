@@ -11,6 +11,8 @@ import {
 import {
   darkToolbarStyles,
   lightToolbarStyles,
+  renderToolbarIconButton,
+  undoRedoActions,
 } from '@blocksuite/affine-components/toolbar';
 import { ColorScheme, type RootBlockModel } from '@blocksuite/affine-model';
 import {
@@ -128,6 +130,9 @@ export class EdgelessToolbarWidget extends WidgetComponent<RootBlockModel> {
       align-items: center;
       justify-content: center;
       gap: ${unsafeCSS(QUICK_TOOLS_GAP)}px;
+    }
+    .history-tools {
+      padding: 8px;
     }
     .full-divider {
       width: ${unsafeCSS(DIVIDER_WIDTH)}px;
@@ -587,6 +592,9 @@ export class EdgelessToolbarWidget extends WidgetComponent<RootBlockModel> {
 
   override connectedCallback() {
     super.connectedCallback();
+    this.disposables.add(
+      this.store.history.onUpdated.subscribe(() => this.requestUpdate())
+    );
     this._toolbarProvider.setValue(this);
     this._resizeObserver = new ResizeObserver(entries => {
       for (const entry of entries) {
@@ -686,6 +694,26 @@ export class EdgelessToolbarWidget extends WidgetComponent<RootBlockModel> {
             .borderColor=${'var(--affine-border-color)'}
             style="filter: drop-shadow(${cssVar('toolbarShadow')})"
           >
+            ${this.isPresentMode
+              ? nothing
+              : html`<div
+                  class="quick-tools history-tools"
+                  @dblclick=${stopPropagation}
+                  @mousedown=${stopPropagation}
+                  @pointerdown=${(event: PointerEvent) => {
+                    event.preventDefault();
+                    event.stopPropagation();
+                  }}
+                >
+                  ${undoRedoActions.map(item =>
+                    renderToolbarIconButton({
+                      icon: item.icon,
+                      label: item.name,
+                      disabled: item.disableWhen(this),
+                      onClick: () => item.action(this),
+                    })
+                  )}
+                </div>`}
             <div
               class="edgeless-toolbar-container"
               data-dense-quick=${

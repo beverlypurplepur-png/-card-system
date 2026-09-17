@@ -17,6 +17,7 @@ export {
   EditorMenuContent,
 } from './menu-button.js';
 export { MenuContext } from './menu-context.js';
+export { renderToolbarIconButton } from './render-icon-button.js';
 export { EditorToolbarSeparator } from './separator.js';
 export { darkToolbarStyles, lightToolbarStyles } from './styles.js';
 export { EditorToolbar } from './toolbar.js';
@@ -27,6 +28,7 @@ export type {
   MenuItemGroup,
   ToolbarMoreMenuConfig,
 } from './types.js';
+export { undoRedoActions } from './undo-redo.js';
 export {
   cloneGroups,
   getMoreMenuConfig,
