@@ -1,0 +1,29 @@
+{
+  "name": "@affine/card-system",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": "./src/index.ts",
+    "./registry": "./src/card-registry.ts"
+  },
+  "scripts": {
+    "test": "vitest run --config vitest.config.ts",
+    "typecheck": "yarn run -T tsc -p tsconfig.json --noEmit"
+  },
+  "devDependencies": {
+    "@blocksuite/affine-block-frame": "workspace:*",
+    "@blocksuite/affine-model": "workspace:*",
+    "@blocksuite/store": "workspace:*",
+    "@electric-sql/pglite": "0.3.14",
+    "@nestjs/common": "^11.1.18",
+    "@nestjs/testing": "patch:@nestjs/testing@npm%3A11.1.18#~/.yarn/patches/@nestjs-testing-npm-11.1.18-32c0f6af12.patch",
+    "@types/node": "^22.0.0",
+    "@types/supertest": "^7.0.0",
+    "happy-dom": "^20.0.0",
+    "reflect-metadata": "^0.2.2",
+    "supertest": "^7.1.4",
+    "vitest": "^4.1.8"
+  }
+}

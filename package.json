@@ -12,7 +12,8 @@
     "tools/*",
     "docs/reference",
     "tools/@types/*",
-    "tests/*"
+    "tests/*",
+    "packages/card-system"
   ],
   "engines": {
     "node": ">=22.12.0 <23.0.0"

@@ -1,8 +1,11 @@
+import { attachFrameAdapter, createCardClient } from '@affine/card-system';
 import type { DocMode, RootBlockModel } from '@blocksuite/affine/model';
 import { Entity } from '@toeverything/infra';
 import { throttle } from 'lodash-es';
 import type { Transaction } from 'yjs';
 
+import { FetchService } from '../../cloud/services/fetch';
+import { WorkspaceServerService } from '../../cloud/services/workspace-server';
 import type { DocProperties } from '../../db';
 import type { WorkspaceService } from '../../workspace';
 import type { DocScope } from '../scopes/doc';
@@ -42,6 +45,17 @@ export class Doc extends Entity {
     this.disposables.push(
       this.workspaceService.workspace.engine.indexer.addPriority(this.id, 100)
     );
+
+    const server = this.scope.get(WorkspaceServerService).server;
+    if (server && !this.blockSuiteDoc.readonly) {
+      const cards = createCardClient(server.scope.get(FetchService).fetch);
+      const adapter = attachFrameAdapter(this.blockSuiteDoc, cards, {
+        ready: this.waitForSyncReady().then(() => cards.isEnabled()),
+        onError: error =>
+          console.error('Card System document adapter failed', error),
+      });
+      this.disposables.push(adapter.dispose);
+    }
   }
 
   /**
