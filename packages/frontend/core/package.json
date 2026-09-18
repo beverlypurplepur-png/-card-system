@@ -8,7 +8,6 @@
     "./bootstrap": "./src/bootstrap/index.ts"
   },
   "dependencies": {
-    "@affine/card-system": "workspace:*",
     "@affine/component": "workspace:*",
     "@affine/debug": "workspace:*",
     "@affine/electron-api": "workspace:*",

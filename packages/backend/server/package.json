@@ -23,7 +23,6 @@
     "postinstall": "prisma generate"
   },
   "dependencies": {
-    "@affine/card-system": "workspace:*",
     "@affine/s3-compat": "workspace:*",
     "@affine/server-native": "workspace:*",
     "@apollo/server": "^5.5.1",

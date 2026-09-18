@@ -7,7 +7,6 @@
   },
   "include": ["./src", "src/**/*.json"],
   "references": [
-    { "path": "../../card-system" },
     { "path": "../component" },
     { "path": "../../common/debug" },
     { "path": "../electron-api" },

@@ -31,7 +31,6 @@ import {
   BackendRuntimeModule,
   BackendRuntimeWorkerModule,
 } from './core/backend-runtime';
-import { CardSystemModule } from './core/card-system';
 import { CommentModule } from './core/comment';
 import { ServerConfigModule, ServerConfigResolverModule } from './core/config';
 import { DocStorageModule } from './core/doc';
@@ -189,7 +188,6 @@ export function buildAppModule(env: Env) {
 
     // business modules
     .use(ServerConfigModule, QuotaModule, DocStorageModule)
-    .useIf(() => !workerOnly && (env.isApi || env.isFrontend), CardSystemModule)
     .useIf(() => env.isWorker, StorageWorkerModule)
     .useIf(() => !workerOnly, FeatureModule, NotificationModule, MailModule)
     // renderer server and front server

@@ -262,25 +262,6 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@affine/card-system@workspace:*, @affine/card-system@workspace:packages/card-system":
-  version: 0.0.0-use.local
-  resolution: "@affine/card-system@workspace:packages/card-system"
-  dependencies:
-    "@blocksuite/affine-block-frame": "workspace:*"
-    "@blocksuite/affine-model": "workspace:*"
-    "@blocksuite/store": "workspace:*"
-    "@electric-sql/pglite": "npm:0.3.14"
-    "@nestjs/common": "npm:^11.1.18"
-    "@nestjs/testing": "patch:@nestjs/testing@npm%3A11.1.18#~/.yarn/patches/@nestjs-testing-npm-11.1.18-32c0f6af12.patch"
-    "@types/node": "npm:^22.0.0"
-    "@types/supertest": "npm:^7.0.0"
-    happy-dom: "npm:^20.0.0"
-    reflect-metadata: "npm:^0.2.2"
-    supertest: "npm:^7.1.4"
-    vitest: "npm:^4.1.8"
-  languageName: unknown
-  linkType: soft
-
 "@affine/changelog@workspace:tools/changelog":
   version: 0.0.0-use.local
   resolution: "@affine/changelog@workspace:tools/changelog"
@@ -392,7 +373,6 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@affine/core@workspace:packages/frontend/core"
   dependencies:
-    "@affine/card-system": "workspace:*"
     "@affine/component": "workspace:*"
     "@affine/debug": "workspace:*"
     "@affine/electron-api": "workspace:*"
@@ -940,7 +920,6 @@ __metadata:
   dependencies:
     "@affine-tools/cli": "workspace:*"
     "@affine-tools/utils": "workspace:*"
-    "@affine/card-system": "workspace:*"
     "@affine/graphql": "workspace:*"
     "@affine/realtime": "workspace:*"
     "@affine/s3-compat": "workspace:*"
@@ -4061,13 +4040,6 @@ __metadata:
     search-insights:
       optional: true
   checksum: 10/ac543830700dcefb09da962b7fd0e3daff8269cdfdf455f2de0c78370776700a7b8e55c4c65fc497dc66a25d81f41f9d0417833bc5478ed7ecef71eaf81a16d3
-  languageName: node
-  linkType: hard
-
-"@electric-sql/pglite@npm:0.3.14":
-  version: 0.3.14
-  resolution: "@electric-sql/pglite@npm:0.3.14"
-  checksum: 10/7cd072cd6a5c4314b47e7d26cc2ac191fcca5ba204f3bb1908bdb34746e51315cbde3e53646020d6a7c19c087d7845d2908850d9f4312285be10b3aefe28d621
   languageName: node
   linkType: hard
 
