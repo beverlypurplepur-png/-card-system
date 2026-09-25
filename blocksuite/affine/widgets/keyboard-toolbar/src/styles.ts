@@ -53,6 +53,43 @@ export const keyboardToolbarStyles = css`
     display: none;
   }
 
+  affine-keyboard-toolbar[placement='right'] {
+    top: 64px;
+    right: 16px;
+    bottom: 200px;
+    width: 52px;
+    pointer-events: none;
+  }
+
+  affine-keyboard-toolbar[placement='right'] .keyboard-toolbar {
+    flex-direction: column;
+    height: auto;
+    max-height: 100%;
+    padding: 4px 8px;
+    pointer-events: auto;
+  }
+
+  affine-keyboard-toolbar[placement='right'] .item-container {
+    flex-direction: column;
+    min-height: 0;
+    overflow-x: hidden;
+    overflow-y: auto;
+  }
+
+  affine-keyboard-toolbar[placement='right'] .divider {
+    height: 0;
+    width: 24px;
+  }
+
+  affine-keyboard-toolbar[placement='right'] affine-keyboard-tool-panel {
+    position: absolute;
+    right: 60px;
+    top: 0;
+    width: min(330px, calc(100vw - 92px));
+    max-height: 100%;
+    pointer-events: auto;
+  }
+
   .divider {
     height: 24px;
     border: 0.5px solid ${unsafeCSSVarV2('layer/insideBorder/border')};

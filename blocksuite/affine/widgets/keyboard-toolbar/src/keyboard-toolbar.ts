@@ -1,4 +1,3 @@
-import { renderToolbarIconButton } from '@blocksuite/affine-components/toolbar';
 import { getSelectedModelsCommand } from '@blocksuite/affine-shared/commands';
 import { type VirtualKeyboardProviderWithAction } from '@blocksuite/affine-shared/services';
 import { SignalWatcher, WithDisposable } from '@blocksuite/global/lit';
@@ -212,18 +211,20 @@ export class AffineKeyboardToolbar extends SignalWatcher(
         style = styleMap({ background: activeBackground });
     }
 
-    return renderToolbarIconButton({
-      icon: this._renderIcon(icon),
-      style,
-      disabled,
-      onClick: () => {
+    return html`<icon-button
+      size="36px"
+      style=${style}
+      ?disabled=${disabled}
+      @click=${() => {
         this._handleItemClick(item, index);
-      },
-    });
+      }}
+    >
+      ${this._renderIcon(icon)}
+    </icon-button>`;
   }
 
   private _renderItems() {
-    if (!this.std.event.active$.value)
+    if (this.placement !== 'right' && !this.std.event.active$.value)
       return html`<div class="item-container"></div>`;
 
     const goPrevToolbarAction = when(
@@ -266,6 +267,12 @@ export class AffineKeyboardToolbar extends SignalWatcher(
   override connectedCallback() {
     super.connectedCallback();
     this.setAttribute(RANGE_SYNC_EXCLUDE_ATTR, 'true');
+
+    if (this.placement === 'right') {
+      this.disposables.add(
+        this.std.store.history.onUpdated.subscribe(() => this.requestUpdate())
+      );
+    }
 
     this._disposables.add(
       effect(() => {
@@ -383,6 +390,9 @@ export class AffineKeyboardToolbar extends SignalWatcher(
 
   @property({ attribute: false })
   accessor keyboard!: VirtualKeyboardProviderWithAction;
+
+  @property({ reflect: true })
+  accessor placement: 'bottom' | 'right' = 'bottom';
 
   @property({ attribute: false })
   accessor config!: KeyboardToolbarConfig;

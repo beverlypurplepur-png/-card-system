@@ -24,8 +24,22 @@ export class AffineKeyboardToolbarWidget extends WidgetComponent<RootBlockModel>
 
   private _initialInputMode: string = '';
 
+  private get _isEdgeless() {
+    return this.block?.tagName === 'AFFINE-EDGELESS-ROOT';
+  }
+
+  // Web Canvas does not install the mobile app's keyboard provider.
+  private readonly _webKeyboard = {
+    visible$: signal(false),
+    height$: signal(0),
+    staticHeight$: signal(0),
+    appTabSafeArea$: signal('0px'),
+  };
+
   get keyboard(): VirtualKeyboardProviderWithAction & { fallback?: boolean } {
-    const provider = this.std.get(VirtualKeyboardProvider);
+    const provider = this._isEdgeless
+      ? (this.std.getOptional(VirtualKeyboardProvider) ?? this._webKeyboard)
+      : this.std.get(VirtualKeyboardProvider);
     if (isVirtualKeyboardProviderWithAction(provider)) return provider;
 
     return {
@@ -60,6 +74,24 @@ export class AffineKeyboardToolbarWidget extends WidgetComponent<RootBlockModel>
 
   override connectedCallback(): void {
     super.connectedCallback();
+
+    if (this._isEdgeless && !this.std.getOptional(VirtualKeyboardProvider)) {
+      const viewport = window.visualViewport;
+      if (viewport) {
+        const update = () => {
+          const height = Math.max(
+            0,
+            window.innerHeight - viewport.height - viewport.offsetTop
+          );
+          this._webKeyboard.visible$.value = height > 0;
+          this._webKeyboard.height$.value = height;
+          if (height > 0) this._webKeyboard.staticHeight$.value = height;
+        };
+        this.disposables.addFromEvent(viewport, 'resize', update);
+        this.disposables.addFromEvent(viewport, 'scroll', update);
+        update();
+      }
+    }
 
     this.disposables.add(
       effect(() => {
@@ -97,20 +129,22 @@ export class AffineKeyboardToolbarWidget extends WidgetComponent<RootBlockModel>
   override render() {
     if (
       this.store.readonly ||
-      !IS_MOBILE ||
-      !this.store
-        .get(FeatureFlagService)
-        .getFlag('enable_mobile_keyboard_toolbar')
+      (!this._isEdgeless &&
+        (!IS_MOBILE ||
+          !this.store
+            .get(FeatureFlagService)
+            .getFlag('enable_mobile_keyboard_toolbar')))
     )
       return nothing;
 
-    if (!this._show$.value) return nothing;
+    if (!this._isEdgeless && !this._show$.value) return nothing;
 
     if (!this.block?.rootComponent) return nothing;
 
     return html`<blocksuite-portal
       .shadowDom=${false}
       .template=${html`<affine-keyboard-toolbar
+        placement=${this._isEdgeless ? 'right' : 'bottom'}
         .keyboard=${this.keyboard}
         .config=${this.config}
         .rootComponent=${this.block.rootComponent}

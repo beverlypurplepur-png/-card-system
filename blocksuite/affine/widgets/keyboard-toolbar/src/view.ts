@@ -18,6 +18,7 @@ export class KeyboardToolbarViewExtension extends ViewExtensionProvider {
   override setup(context: ViewExtensionContext) {
     super.setup(context);
     if (
+      this.isEdgeless(context.scope) ||
       context.scope === 'mobile-page' ||
       // Legacy mobile page
       (context.scope === 'page' && IS_MOBILE)
