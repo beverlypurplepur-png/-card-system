@@ -115,6 +115,24 @@ const builtinSurfaceToolbarConfig = {
       },
     },
     {
+      id: 'b.make-card',
+      label: 'Make Card',
+      tooltip: 'Make Card',
+      when: ctx => ctx.getSurfaceModelsByType(FrameBlockModel).length === 1,
+      run(ctx) {
+        const model = ctx.getCurrentModelByType(FrameBlockModel);
+        if (!model) return;
+
+        ctx.host.dispatchEvent(
+          new CustomEvent('affine:make-frame-card', {
+            bubbles: true,
+            composed: true,
+            detail: { documentId: ctx.store.id, frameId: model.id },
+          })
+        );
+      },
+    },
+    {
       id: 'b.ungroup',
       tooltip: 'Ungroup',
       icon: UngroupIcon(),

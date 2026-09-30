@@ -3,6 +3,7 @@ import { map } from 'rxjs';
 
 import { Collection } from '../entities/collection';
 import type { CollectionInfo, CollectionStore } from '../stores/collection';
+import type { FrameReference } from '../stores/collection';
 
 export interface CollectionMeta extends Pick<CollectionInfo, 'id' | 'name'> {
   title: string;
@@ -75,6 +76,14 @@ export class CollectionService extends Service {
   removeDocFromCollection(collectionId: string, docId: string) {
     const collection = this.collection$(collectionId).value;
     collection?.removeDoc(docId);
+  }
+
+  addFrameToCollection(collectionId: string, frame: FrameReference) {
+    this.collection$(collectionId).value?.addFrame(frame);
+  }
+
+  removeFrameFromCollection(collectionId: string, frame: FrameReference) {
+    this.collection$(collectionId).value?.removeFrame(frame);
   }
 
   deleteCollection(id: string) {

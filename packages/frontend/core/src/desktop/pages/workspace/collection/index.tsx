@@ -33,6 +33,7 @@ import { AllDocSidebarTabs } from '../layouts/all-doc-sidebar-tabs';
 import { CollectionDetailHeader } from './header';
 import * as styles from './index.css';
 import { CollectionListHeader } from './list-header';
+import { CollectionFrameCards } from './frame-cards';
 
 export const CollectionDetail = ({
   collection,
@@ -53,6 +54,7 @@ export const CollectionDetail = ({
   const orderBy = useLiveData(explorerContextValue.orderBy$);
   const rules = useLiveData(collection.rules$);
   const allowList = useLiveData(collection.allowList$);
+  const frameAllowList = useLiveData(collection.frameAllowList$);
 
   const handleDisplayPreferenceChange = useCallback(
     (displayPreference: ExplorerDisplayPreference) => {
@@ -116,6 +118,7 @@ export const CollectionDetail = ({
           <CollectionListHeader collection={collection} />
           <div className={styles.scrollArea}>
             <DocsExplorer disableMultiDelete={!isAdmin && !isOwner} />
+            <CollectionFrameCards frames={frameAllowList} />
           </div>
         </FlexWrapper>
       </ViewBody>
@@ -158,7 +161,9 @@ export const Component = function CollectionPage() {
     return <PageNotFound />;
   }
   const inner =
-    info?.allowList.length === 0 && info?.rules.filters.length === 0 ? (
+    info?.allowList.length === 0 &&
+    info?.frameAllowList.length === 0 &&
+    info?.rules.filters.length === 0 ? (
       <Placeholder collection={collection} />
     ) : (
       <CollectionDetail collection={collection} />

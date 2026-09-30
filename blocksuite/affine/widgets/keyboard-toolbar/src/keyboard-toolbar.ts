@@ -1,12 +1,17 @@
+import { NoteBlockModel } from '@blocksuite/affine-model';
+import { focusTextModel } from '@blocksuite/affine-rich-text';
 import { getSelectedModelsCommand } from '@blocksuite/affine-shared/commands';
 import { type VirtualKeyboardProviderWithAction } from '@blocksuite/affine-shared/services';
 import { SignalWatcher, WithDisposable } from '@blocksuite/global/lit';
 import { ArrowLeftBigIcon, KeyboardIcon } from '@blocksuite/icons/lit';
 import {
   BlockComponent,
+  BlockSelection,
   PropTypes,
   requiredProperties,
   ShadowlessElement,
+  SurfaceSelection,
+  TextSelection,
 } from '@blocksuite/std';
 import { RANGE_SYNC_EXCLUDE_ATTR } from '@blocksuite/std/inline';
 import { effect, type Signal, signal } from '@preact/signals-core';
@@ -18,6 +23,7 @@ import { when } from 'lit/directives/when.js';
 
 import type {
   KeyboardIconType,
+  KeyboardToolbarActionItem,
   KeyboardToolbarConfig,
   KeyboardToolbarContext,
   KeyboardToolbarItem,
@@ -94,9 +100,8 @@ export class AffineKeyboardToolbar extends SignalWatcher(
     item: KeyboardToolbarItem,
     index: number
   ) => {
-    if (isKeyboardToolBarActionItem(item)) {
-      item.action &&
-        Promise.resolve(item.action(this._context)).catch(console.error);
+    if (isKeyboardToolBarActionItem(item) && item.action) {
+      void this._runAction(item).catch(console.error);
     } else if (isKeyboardSubToolBarConfig(item)) {
       this._closeToolPanel();
       this._path$.value = [...this._path$.value, index];
@@ -114,6 +119,43 @@ export class AffineKeyboardToolbar extends SignalWatcher(
       }
     }
     this._lastActiveItem$.value = item;
+  };
+
+  private readonly _prepareEdgelessNoteTarget = async () => {
+    if (this.placement !== 'right') return;
+
+    const { selection, store } = this.std;
+    if (selection.find(TextSelection) || selection.find(BlockSelection)) {
+      return;
+    }
+
+    const surfaceSelection = selection.find(SurfaceSelection);
+    if (!surfaceSelection?.editing || surfaceSelection.elements.length !== 1) {
+      return;
+    }
+
+    const note = store.getBlock(surfaceSelection.elements[0])?.model;
+    if (!(note instanceof NoteBlockModel)) return;
+
+    const target = note.children.find(child => Boolean(child.text));
+    if (target) {
+      focusTextModel(this.std, target.id);
+      return;
+    }
+
+    const paragraphId = store.addBlock('affine:paragraph', {}, note);
+    if (!paragraphId) return;
+
+    focusTextModel(this.std, paragraphId);
+    await this.std.host.updateComplete;
+    await new Promise<void>(resolve => requestAnimationFrame(() => resolve()));
+  };
+
+  private readonly _runAction = async (item: KeyboardToolbarActionItem) => {
+    if (item.name !== 'Undo' && item.name !== 'Redo') {
+      await this._prepareEdgelessNoteTarget();
+    }
+    await item.action?.(this._context);
   };
 
   private readonly _lastActiveItem$ = signal<KeyboardToolbarItem | null>(null);
@@ -148,6 +190,7 @@ export class AffineKeyboardToolbar extends SignalWatcher(
     return {
       std: this.std,
       rootComponent: this.rootComponent,
+      runAction: this._runAction,
       closeToolPanel: () => {
         this._closeToolPanel();
       },

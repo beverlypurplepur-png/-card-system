@@ -103,8 +103,10 @@ import {
 } from '@blocksuite/icons/lit';
 import {
   type BlockComponent,
+  BlockSelection,
   type BlockStdScope,
   ConfigExtensionFactory,
+  TextSelection,
 } from '@blocksuite/std';
 import { GfxControllerIdentifier } from '@blocksuite/std/gfx';
 import { computed } from '@preact/signals-core';
@@ -165,6 +167,7 @@ export type KeyboardSubToolbarConfig = {
 export type KeyboardToolbarContext = {
   std: BlockStdScope;
   rootComponent: BlockComponent;
+  runAction: (item: KeyboardToolbarActionItem) => void | Promise<void>;
   /**
    * Close current tool panel and show virtual keyboard
    */
@@ -305,16 +308,29 @@ const textToolActionItems: KeyboardToolbarActionItem[] = [
         'affine:edgeless-text'
       );
     },
-    action: ({ rootComponent: { model }, std }) => {
-      const { store } = model;
-      const parent = store.getParent(model);
+    action: ({ std }) => {
+      const textSelection = std.selection.find(TextSelection);
+      const blockSelection = std.selection.find(BlockSelection);
+      const selectionBlockId =
+        textSelection?.from.blockId ?? blockSelection?.blockId;
+      const model = selectionBlockId
+        ? std.store.getBlock(selectionBlockId)?.model
+        : std.command.exec(getSelectedModelsCommand)[1].selectedModels?.[0];
+      if (!model) return;
+
+      const parent = std.store.getParent(model);
       if (!parent) return;
 
       const index = parent.children.indexOf(model);
       if (index === -1) return;
-      const calloutId = store.addBlock('affine:callout', {}, parent, index + 1);
+      const calloutId = std.store.addBlock(
+        'affine:callout',
+        {},
+        parent,
+        index + 1
+      );
       if (!calloutId) return;
-      const paragraphId = store.addBlock('affine:paragraph', {}, calloutId);
+      const paragraphId = std.store.addBlock('affine:paragraph', {}, calloutId);
       if (!paragraphId) return;
       std.host.updateComplete
         .then(() => {

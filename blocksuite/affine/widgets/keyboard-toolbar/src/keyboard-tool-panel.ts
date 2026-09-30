@@ -28,10 +28,9 @@ export class AffineKeyboardToolPanel extends SignalWatcher(
   static override styles = keyboardToolPanelStyles;
 
   private readonly _handleItemClick = (item: KeyboardToolbarActionItem) => {
-    if (item.disableWhen && item.disableWhen(this.context)) return;
-    if (item.action) {
-      Promise.resolve(item.action(this.context)).catch(console.error);
-    }
+    if (!item.action || (item.disableWhen && item.disableWhen(this.context)))
+      return;
+    void Promise.resolve(this.context.runAction(item)).catch(console.error);
   };
 
   private _renderGroup(group: KeyboardToolPanelGroup) {

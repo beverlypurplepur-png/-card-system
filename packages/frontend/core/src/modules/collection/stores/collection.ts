@@ -20,6 +20,12 @@ export interface CollectionInfo {
     filters: FilterParams[];
   };
   allowList: string[];
+  frameAllowList: FrameReference[];
+}
+
+export interface FrameReference {
+  documentId: string;
+  frameId: string;
 }
 
 export class CollectionStore extends Store {
@@ -126,6 +132,7 @@ export class CollectionStore extends Store {
         name: info.name ?? '',
         rules: info.rules ?? { filters: [] },
         allowList: info.allowList ?? [],
+        frameAllowList: info.frameAllowList ?? [],
       },
     ]);
 
@@ -171,6 +178,8 @@ export class CollectionStore extends Store {
               name: info.name ?? migratedCollectionInfo.name,
               rules: info.rules ?? migratedCollectionInfo.rules,
               allowList: info.allowList ?? migratedCollectionInfo.allowList,
+              frameAllowList:
+                info.frameAllowList ?? migratedCollectionInfo.frameAllowList,
             },
           ]);
         });
@@ -185,7 +194,12 @@ export class CollectionStore extends Store {
     legacyCollectionInfo: LegacyCollectionInfo
   ): CollectionInfo {
     if ('rules' in legacyCollectionInfo && legacyCollectionInfo.rules) {
-      return legacyCollectionInfo as CollectionInfo;
+      return {
+        ...legacyCollectionInfo,
+        frameAllowList:
+          (legacyCollectionInfo as Partial<CollectionInfo>).frameAllowList ??
+          [],
+      } as CollectionInfo;
     }
     return {
       id: legacyCollectionInfo.id,
@@ -196,6 +210,7 @@ export class CollectionStore extends Store {
           : [],
       },
       allowList: legacyCollectionInfo.allowList,
+      frameAllowList: [],
     };
   }
 
