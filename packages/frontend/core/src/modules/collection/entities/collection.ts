@@ -4,7 +4,6 @@ import { map, switchMap } from 'rxjs';
 
 import type { CollectionRulesService } from '../../collection-rules';
 import type { CollectionInfo, CollectionStore } from '../stores/collection';
-import type { FrameReference } from '../stores/collection';
 
 export class Collection extends Entity<{ id: string }> {
   constructor(
@@ -28,7 +27,6 @@ export class Collection extends Entity<{ id: string }> {
               filters: [],
             },
             allowList: [],
-            frameAllowList: [],
             ...info,
           }) as CollectionInfo
       )
@@ -38,7 +36,6 @@ export class Collection extends Entity<{ id: string }> {
 
   name$ = this.info$.map(info => info.name);
   allowList$ = this.info$.map(info => info.allowList);
-  frameAllowList$ = this.info$.map(info => info.frameAllowList);
   rules$ = this.info$.map(info => info.rules);
 
   /**
@@ -87,32 +84,6 @@ export class Collection extends Entity<{ id: string }> {
   removeDoc(...docIds: string[]) {
     this.store.updateCollectionInfo(this.id, {
       allowList: this.info$.value.allowList.filter(id => !docIds.includes(id)),
-    });
-  }
-
-  addFrame(...frames: FrameReference[]) {
-    const current = this.info$.value.frameAllowList;
-    this.store.updateCollectionInfo(this.id, {
-      frameAllowList: [
-        ...current,
-        ...frames.filter(
-          frame =>
-            !current.some(
-              current =>
-                current.documentId === frame.documentId &&
-                current.frameId === frame.frameId
-            )
-        ),
-      ],
-    });
-  }
-
-  removeFrame(frame: FrameReference) {
-    this.store.updateCollectionInfo(this.id, {
-      frameAllowList: this.info$.value.frameAllowList.filter(
-        current =>
-          current.documentId !== frame.documentId || current.frameId !== frame.frameId
-      ),
     });
   }
 }

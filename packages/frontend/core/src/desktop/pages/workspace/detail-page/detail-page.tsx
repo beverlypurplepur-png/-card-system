@@ -18,8 +18,6 @@ import { TrashPageFooter } from '@affine/core/components/pure/trash-page-footer'
 import { TopTip } from '@affine/core/components/top-tip';
 import { ServerService } from '@affine/core/modules/cloud';
 import { DocService } from '@affine/core/modules/doc';
-import { CollectionService } from '@affine/core/modules/collection';
-import { WorkspaceDialogService } from '@affine/core/modules/dialogs';
 import { EditorService } from '@affine/core/modules/editor';
 import { FeatureFlagService } from '@affine/core/modules/feature-flag';
 import { GlobalContextService } from '@affine/core/modules/global-context';
@@ -83,8 +81,6 @@ const DetailPageImpl = memo(function DetailPageImpl() {
     docService,
     workspaceService,
     globalContextService,
-    collectionService,
-    workspaceDialogService,
   } = useServices({
     WorkbenchService,
     ViewService,
@@ -92,8 +88,6 @@ const DetailPageImpl = memo(function DetailPageImpl() {
     DocService,
     WorkspaceService,
     GlobalContextService,
-    CollectionService,
-    WorkspaceDialogService,
   });
   const workbench = workbenchService.workbench;
   const editor = editorService.editor;
@@ -199,26 +193,6 @@ const DetailPageImpl = memo(function DetailPageImpl() {
     (editorContainer: AffineEditorContainer) => {
       const std = editorContainer.std;
       const disposable = new DisposableGroup();
-      const onMakeFrameCard = (event: Event) => {
-        const { documentId, frameId } = (event as CustomEvent<{
-          documentId: string;
-          frameId: string;
-        }>).detail;
-        workspaceDialogService.open('collection-selector', {
-          init: [],
-        }, collectionIds => {
-          collectionIds?.forEach(collectionId =>
-            collectionService.addFrameToCollection(collectionId, {
-              documentId,
-              frameId,
-            })
-          );
-        });
-      };
-      editorContainer.addEventListener('affine:make-frame-card', onMakeFrameCard);
-      disposable.add(() =>
-        editorContainer.removeEventListener('affine:make-frame-card', onMakeFrameCard)
-      );
 
       // Check if journal and handle accordingly to set focus on input block.
       if (isJournal) {
@@ -320,14 +294,7 @@ const DetailPageImpl = memo(function DetailPageImpl() {
         disposable.dispose();
       };
     },
-    [
-      collectionService,
-      editor,
-      workbench,
-      workspaceDialogService,
-      peekView,
-      isJournal,
-    ]
+    [editor, workbench, peekView, isJournal]
   );
 
   const [hasScrollTop, setHasScrollTop] = useState(false);

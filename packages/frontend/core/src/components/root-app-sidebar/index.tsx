@@ -21,6 +21,7 @@ import type { Store } from '@blocksuite/affine/store';
 import {
   AiOutlineIcon,
   AllDocsIcon,
+  CollectionsIcon,
   ImportIcon,
   JournalIcon,
   SettingsIcon,
@@ -112,6 +113,26 @@ const AIChatButton = () => {
       <span data-testid="ai-chat">
         {t['com.affine.workspaceSubPath.chat']()}
       </span>
+    </MenuLinkItem>
+  );
+};
+
+const CardSystemButton = () => {
+  const { workbenchService } = useServices({ WorkbenchService });
+  const workbench = workbenchService.workbench;
+  const active = useLiveData(
+    workbench.location$.selector(
+      location => location.pathname === '/card-system'
+    )
+  );
+
+  return (
+    <MenuLinkItem
+      icon={<CollectionsIcon />}
+      active={active}
+      to="/card-system"
+    >
+      <span data-testid="card-system">Card System</span>
     </MenuLinkItem>
   );
 };
@@ -212,6 +233,7 @@ export const RootAppSidebar = memo((): ReactElement => {
           <AddPageButton />
         </div>
         <AllDocsButton />
+        <CardSystemButton />
         {false && <AppSidebarJournalButton />}
         {sessionStatus === 'authenticated' && <NotificationButton />}
         {false && <AIChatButton />}

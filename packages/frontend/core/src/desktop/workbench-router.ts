@@ -18,6 +18,10 @@ export const workbenchRoutes = [
     lazy: () => import('./pages/workspace/collection/index'),
   },
   {
+    path: '/card-system',
+    lazy: () => import('./pages/workspace/card-system/index'),
+  },
+  {
     path: '/tag',
     lazy: () => import('./pages/workspace/all-tag'),
   },
