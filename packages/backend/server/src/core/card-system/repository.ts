@@ -2,20 +2,20 @@ import {
   BadRequestException,
   ConflictException,
   Injectable,
-} from "@nestjs/common";
-import { Prisma, PrismaClient } from "@prisma/client";
+} from '@nestjs/common';
+import { Prisma, PrismaClient } from '@prisma/client';
 
 import type {
+  CardRecord,
   DeckRecord,
   LegacyImport,
   LegacyImportResult,
-  ManualCardRecord,
-} from "./types";
+} from './types';
 
 type SqlClient = PrismaClient | Prisma.TransactionClient;
 
 type DeckRow = {
-  deck_id: string;
+  collection_id: string;
   name: string;
   created_at: Date | string;
   updated_at: Date | string;
@@ -24,9 +24,14 @@ type DeckRow = {
 
 type CardRow = {
   card_id: string;
-  deck_id: string | null;
-  front: string;
-  back: string;
+  card_type: string;
+  collection_ids: string[];
+  front: string | null;
+  back: string | null;
+  affine_document_id: string | null;
+  affine_frame_id: string | null;
+  states: Record<string, unknown>;
+  metadata: Record<string, unknown>;
   created_at: Date | string;
   updated_at: Date | string;
   deleted_at: Date | string | null;
@@ -40,19 +45,25 @@ const nullableIso = (value: Date | string | null) =>
   value === null ? null : iso(value);
 
 const deckRecord = (row: DeckRow): DeckRecord => ({
-  id: row.deck_id,
+  id: row.collection_id,
   name: row.name,
   createdAt: iso(row.created_at),
   updatedAt: iso(row.updated_at),
   deletedAt: nullableIso(row.deleted_at),
 });
 
-const cardRecord = (row: CardRow): ManualCardRecord => ({
+const cardRecord = (row: CardRow): CardRecord => ({
   id: row.card_id,
-  deckId: row.deck_id,
-  kind: "manual",
-  front: row.front,
-  back: row.back,
+  cardType: row.card_type,
+  collectionIds: row.collection_ids,
+  // Compatibility field for the unmodified BaraBara UI.
+  deckId: row.collection_ids[0] ?? null,
+  front: row.front ?? '',
+  back: row.back ?? '',
+  affineDocumentId: row.affine_document_id,
+  affineFrameId: row.affine_frame_id,
+  states: row.states,
+  metadata: row.metadata,
   createdAt: iso(row.created_at),
   updatedAt: iso(row.updated_at),
   deletedAt: nullableIso(row.deleted_at),
@@ -63,18 +74,18 @@ const cardRecord = (row: CardRow): ManualCardRecord => ({
 
 const isUuid = (value: string) =>
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
-    value,
+    value
   );
 
 const requiredText = (value: unknown, label: string, max = 100_000) => {
-  if (typeof value !== "string" || !value.trim() || value.length > max) {
+  if (typeof value !== 'string' || !value.trim() || value.length > max) {
     throw new BadRequestException(`Invalid ${label}`);
   }
   return value;
 };
 
 const date = (value: unknown, label: string) => {
-  if (typeof value !== "string" || !Number.isFinite(Date.parse(value))) {
+  if (typeof value !== 'string' || !Number.isFinite(Date.parse(value))) {
     throw new BadRequestException(`Invalid ${label}`);
   }
   return new Date(value);
@@ -96,178 +107,137 @@ export class CardSystemRepository {
   }
 
   async listDecks(workspaceId: string, includeDeleted = false) {
-    const rows = await this.query<DeckRow>(
-      this.db,
-      `SELECT deck_id, name, created_at, updated_at, deleted_at
-       FROM card_system.decks
-       WHERE workspace_id = $1 AND ($2::boolean OR deleted_at IS NULL)
-       ORDER BY created_at ASC`,
-      workspaceId,
-      includeDeleted,
-    );
-    return rows.map(deckRecord);
+    return this.listDecksWith(this.db, workspaceId, includeDeleted);
   }
 
   async createDeck(workspaceId: string, input: { id?: string; name: unknown }) {
     const id = input.id && isUuid(input.id) ? input.id : crypto.randomUUID();
-    const name = requiredText(input.name, "deck name", 1024).trim();
     try {
       const rows = await this.query<DeckRow>(
         this.db,
-        `INSERT INTO card_system.decks (deck_id, workspace_id, name)
+        `INSERT INTO card_system.collections (collection_id, workspace_id, name)
          VALUES ($1::uuid, $2, $3)
-         RETURNING deck_id, name, created_at, updated_at, deleted_at`,
+         RETURNING collection_id, name, created_at, updated_at, deleted_at`,
         id,
         workspaceId,
-        name,
+        requiredText(input.name, 'collection name', 1024).trim()
       );
       return deckRecord(rows[0]);
     } catch (error) {
       if (
         error instanceof Prisma.PrismaClientKnownRequestError &&
-        error.code === "P2010"
+        error.code === 'P2010'
       ) {
-        throw new ConflictException("Deck id is already in use");
+        throw new ConflictException('Collection id is already in use');
       }
       throw error;
     }
   }
 
-  async updateDeck(workspaceId: string, deckId: string, name: unknown) {
+  async updateDeck(workspaceId: string, collectionId: string, name: unknown) {
     const rows = await this.query<DeckRow>(
       this.db,
-      `UPDATE card_system.decks
+      `UPDATE card_system.collections
        SET name = $3, updated_at = CURRENT_TIMESTAMP
-       WHERE workspace_id = $1 AND deck_id = $2::uuid AND deleted_at IS NULL
-       RETURNING deck_id, name, created_at, updated_at, deleted_at`,
+       WHERE workspace_id = $1 AND collection_id = $2::uuid AND deleted_at IS NULL
+       RETURNING collection_id, name, created_at, updated_at, deleted_at`,
       workspaceId,
-      deckId,
-      requiredText(name, "deck name", 1024).trim(),
+      collectionId,
+      requiredText(name, 'collection name', 1024).trim()
     );
-    if (!rows[0]) throw new BadRequestException("Deck not found");
+    if (!rows[0]) throw new BadRequestException('Collection not found');
     return deckRecord(rows[0]);
   }
 
-  async deleteDeck(workspaceId: string, deckId: string) {
-    const rows = await this.query<DeckRow>(
-      this.db,
-      `UPDATE card_system.decks
-         SET deleted_at = COALESCE(deleted_at, CURRENT_TIMESTAMP),
-             updated_at = CASE WHEN deleted_at IS NULL THEN CURRENT_TIMESTAMP ELSE updated_at END
-         WHERE workspace_id = $1 AND deck_id = $2::uuid
-         RETURNING deck_id, name, created_at, updated_at, deleted_at`,
-      workspaceId,
-      deckId,
-    );
-    if (!rows[0]) throw new BadRequestException("Deck not found");
-    return deckRecord(rows[0]);
+  async deleteDeck(workspaceId: string, collectionId: string) {
+    return this.setCollectionDeleted(workspaceId, collectionId, true);
   }
 
-  async restoreDeck(workspaceId: string, deckId: string) {
+  async restoreDeck(workspaceId: string, collectionId: string) {
+    return this.setCollectionDeleted(workspaceId, collectionId, false);
+  }
+
+  private async setCollectionDeleted(
+    workspaceId: string,
+    collectionId: string,
+    deleted: boolean
+  ) {
     const rows = await this.query<DeckRow>(
       this.db,
-      `UPDATE card_system.decks
-         SET deleted_at = NULL, updated_at = CURRENT_TIMESTAMP
-         WHERE workspace_id = $1 AND deck_id = $2::uuid
-         RETURNING deck_id, name, created_at, updated_at, deleted_at`,
+      `UPDATE card_system.collections
+       SET deleted_at = CASE WHEN $3 THEN COALESCE(deleted_at, CURRENT_TIMESTAMP) ELSE NULL END,
+           updated_at = CURRENT_TIMESTAMP
+       WHERE workspace_id = $1 AND collection_id = $2::uuid
+       RETURNING collection_id, name, created_at, updated_at, deleted_at`,
       workspaceId,
-      deckId,
+      collectionId,
+      deleted
     );
-    if (!rows[0]) throw new BadRequestException("Deck not found");
+    if (!rows[0]) throw new BadRequestException('Collection not found');
     return deckRecord(rows[0]);
   }
 
   async listCards(
     workspaceId: string,
-    deckId?: string,
-    includeDeleted = false,
+    collectionId?: string,
+    includeDeleted = false
   ) {
-    const rows = await this.query<CardRow>(
+    return this.listCardsWith(
       this.db,
-      `SELECT c.card_id, c.deck_id, content.front, content.back,
-              c.created_at, c.updated_at, c.deleted_at,
-              review.streak, review.interval_days, review.next_review_at
-       FROM card_system.cards c
-       JOIN card_system.decks deck ON deck.deck_id = c.deck_id
-       JOIN card_system.manual_card_content content ON content.card_id = c.card_id
-       JOIN card_system.review_state review ON review.card_id = c.card_id
-       WHERE c.workspace_id = $1
-         AND ($2::uuid IS NULL OR c.deck_id = $2::uuid)
-         AND ($3::boolean OR c.deleted_at IS NULL)
-         AND ($3::boolean OR deck.deleted_at IS NULL)
-       ORDER BY c.created_at ASC`,
       workspaceId,
-      deckId ?? null,
-      includeDeleted,
+      collectionId,
+      includeDeleted
     );
-    return rows.map(cardRecord);
   }
 
-  private async assertActiveDeck(
+  private async assertActiveCollection(
     db: SqlClient,
     workspaceId: string,
-    deckId: string,
+    collectionId: string
   ) {
     const rows = await this.query<{ ok: boolean }>(
       db,
-      `SELECT true AS ok FROM card_system.decks
-       WHERE workspace_id = $1 AND deck_id = $2::uuid AND deleted_at IS NULL`,
+      `SELECT true AS ok FROM card_system.collections
+       WHERE workspace_id = $1 AND collection_id = $2::uuid AND deleted_at IS NULL`,
       workspaceId,
-      deckId,
+      collectionId
     );
-    if (!rows[0]) throw new BadRequestException("Deck not found");
+    if (!rows[0]) throw new BadRequestException('Collection not found');
   }
 
   async createManualCard(
     workspaceId: string,
     input: {
       id?: string;
-      deckId: string;
+      deckId?: string | null;
       front: unknown;
       back: unknown;
       streak?: unknown;
       intervalDays?: unknown;
       nextReviewAt?: unknown;
-    },
+    }
   ) {
     const id = input.id && isUuid(input.id) ? input.id : crypto.randomUUID();
-    const front = requiredText(input.front, "card front");
-    const back = requiredText(input.back, "card back");
-    const streak = nonNegativeInteger(input.streak ?? 0, "streak");
-    const intervalDays = nonNegativeInteger(
-      input.intervalDays ?? 0,
-      "intervalDays",
-    );
-    const nextReviewAt = date(
-      input.nextReviewAt ?? new Date().toISOString(),
-      "nextReviewAt",
-    );
-    return this.db.$transaction(async (tx) => {
-      await this.assertActiveDeck(tx, workspaceId, input.deckId);
+    return this.db.$transaction(async tx => {
+      if (input.deckId) {
+        await this.assertActiveCollection(tx, workspaceId, input.deckId);
+      }
       await tx.$executeRawUnsafe(
-        `INSERT INTO card_system.cards
-           (card_id, workspace_id, deck_id, card_kind)
-         VALUES ($1::uuid, $2, $3::uuid, 'manual')`,
+        `INSERT INTO card_system.card_records
+           (card_id, workspace_id, card_type, front, back,
+            streak, interval_days, next_review_at)
+         VALUES ($1::uuid, $2, 'basic', $3, $4, $5, $6, $7)`,
         id,
         workspaceId,
-        input.deckId,
+        requiredText(input.front, 'card front'),
+        requiredText(input.back, 'card back'),
+        nonNegativeInteger(input.streak ?? 0, 'streak'),
+        nonNegativeInteger(input.intervalDays ?? 0, 'intervalDays'),
+        date(input.nextReviewAt ?? new Date().toISOString(), 'nextReviewAt')
       );
-      await tx.$executeRawUnsafe(
-        `INSERT INTO card_system.manual_card_content (card_id, front, back)
-         VALUES ($1::uuid, $2, $3)`,
-        id,
-        front,
-        back,
-      );
-      await tx.$executeRawUnsafe(
-        `INSERT INTO card_system.review_state
-           (card_id, streak, interval_days, next_review_at)
-         VALUES ($1::uuid, $2, $3, $4)`,
-        id,
-        streak,
-        intervalDays,
-        nextReviewAt,
-      );
+      if (input.deckId) {
+        await this.addMembership(tx, id, input.deckId);
+      }
       return (
         await this.listCardsWith(tx, workspaceId, undefined, true, id)
       )[0];
@@ -277,29 +247,42 @@ export class CardSystemRepository {
   private async listCardsWith(
     db: SqlClient,
     workspaceId: string,
-    deckId?: string,
+    collectionId?: string,
     includeDeleted = false,
-    cardId?: string,
+    cardId?: string
   ) {
     const rows = await this.query<CardRow>(
       db,
-      `SELECT c.card_id, c.deck_id, content.front, content.back,
-              c.created_at, c.updated_at, c.deleted_at,
-              review.streak, review.interval_days, review.next_review_at
-       FROM card_system.cards c
-       JOIN card_system.decks deck ON deck.deck_id = c.deck_id
-       JOIN card_system.manual_card_content content ON content.card_id = c.card_id
-       JOIN card_system.review_state review ON review.card_id = c.card_id
-       WHERE c.workspace_id = $1
-         AND ($2::uuid IS NULL OR c.deck_id = $2::uuid)
-         AND ($3::boolean OR c.deleted_at IS NULL)
-         AND ($3::boolean OR deck.deleted_at IS NULL)
-         AND ($4::uuid IS NULL OR c.card_id = $4::uuid)
-       ORDER BY c.created_at ASC`,
+      `SELECT card.card_id, card.card_type, card.front, card.back,
+              card.affine_document_id, card.affine_frame_id,
+              card.states, card.metadata,
+              card.created_at, card.updated_at, card.deleted_at,
+              card.streak, card.interval_days, card.next_review_at,
+              COALESCE((
+                SELECT array_agg(membership.collection_id::text ORDER BY membership.created_at)
+                FROM card_system.card_collection_memberships membership
+                JOIN card_system.collections collection
+                  ON collection.collection_id = membership.collection_id
+                WHERE membership.card_id = card.card_id
+                  AND collection.deleted_at IS NULL
+              ), ARRAY[]::text[]) AS collection_ids
+       FROM card_system.card_records card
+       WHERE card.workspace_id = $1
+         AND ($2::uuid IS NULL OR EXISTS (
+           SELECT 1 FROM card_system.card_collection_memberships membership
+           JOIN card_system.collections collection
+             ON collection.collection_id = membership.collection_id
+           WHERE membership.card_id = card.card_id
+             AND membership.collection_id = $2::uuid
+             AND collection.deleted_at IS NULL
+         ))
+         AND ($3::boolean OR card.deleted_at IS NULL)
+         AND ($4::uuid IS NULL OR card.card_id = $4::uuid)
+       ORDER BY card.created_at ASC`,
       workspaceId,
-      deckId ?? null,
+      collectionId ?? null,
       includeDeleted,
-      cardId ?? null,
+      cardId ?? null
     );
     return rows.map(cardRecord);
   }
@@ -308,43 +291,35 @@ export class CardSystemRepository {
     workspaceId: string,
     cardId: string,
     input: {
-      deckId: string;
+      deckId?: string | null;
       front: unknown;
       back: unknown;
       streak: unknown;
       intervalDays: unknown;
       nextReviewAt: unknown;
-    },
+    }
   ) {
-    return this.db.$transaction(async (tx) => {
-      await this.assertActiveDeck(tx, workspaceId, input.deckId);
+    return this.db.$transaction(async tx => {
+      if (input.deckId) {
+        await this.assertActiveCollection(tx, workspaceId, input.deckId);
+      }
       const changed = await tx.$executeRawUnsafe(
-        `UPDATE card_system.cards
-         SET deck_id = $3::uuid, updated_at = CURRENT_TIMESTAMP
-         WHERE workspace_id = $1 AND card_id = $2::uuid
-           AND card_kind = 'manual' AND deleted_at IS NULL`,
+        `UPDATE card_system.card_records
+         SET front = $3, back = $4, streak = $5, interval_days = $6,
+             next_review_at = $7, updated_at = CURRENT_TIMESTAMP
+         WHERE workspace_id = $1 AND card_id = $2::uuid AND deleted_at IS NULL`,
         workspaceId,
         cardId,
-        input.deckId,
+        requiredText(input.front, 'card front'),
+        requiredText(input.back, 'card back'),
+        nonNegativeInteger(input.streak, 'streak'),
+        nonNegativeInteger(input.intervalDays, 'intervalDays'),
+        date(input.nextReviewAt, 'nextReviewAt')
       );
-      if (!changed) throw new BadRequestException("Card not found");
-      await tx.$executeRawUnsafe(
-        `UPDATE card_system.manual_card_content SET front = $2, back = $3
-         WHERE card_id = $1::uuid`,
-        cardId,
-        requiredText(input.front, "card front"),
-        requiredText(input.back, "card back"),
-      );
-      await tx.$executeRawUnsafe(
-        `UPDATE card_system.review_state
-         SET streak = $2, interval_days = $3, next_review_at = $4,
-             updated_at = CURRENT_TIMESTAMP
-         WHERE card_id = $1::uuid`,
-        cardId,
-        nonNegativeInteger(input.streak, "streak"),
-        nonNegativeInteger(input.intervalDays, "intervalDays"),
-        date(input.nextReviewAt, "nextReviewAt"),
-      );
+      if (!changed) throw new BadRequestException('Card not found');
+      if (input.deckId) {
+        await this.addMembership(tx, cardId, input.deckId);
+      }
       return (
         await this.listCardsWith(tx, workspaceId, undefined, true, cardId)
       )[0];
@@ -354,49 +329,96 @@ export class CardSystemRepository {
   async updateReview(
     workspaceId: string,
     cardId: string,
-    input: { streak: unknown; intervalDays: unknown; nextReviewAt: unknown },
+    input: { streak: unknown; intervalDays: unknown; nextReviewAt: unknown }
   ) {
-    return this.db.$transaction(async (tx) => {
-      const changed = await tx.$executeRawUnsafe(
-        `UPDATE card_system.review_state review
-         SET streak = $3, interval_days = $4, next_review_at = $5,
-             updated_at = CURRENT_TIMESTAMP
-         FROM card_system.cards card
-         WHERE review.card_id = card.card_id
-           AND card.workspace_id = $1 AND card.card_id = $2::uuid
-           AND card.deleted_at IS NULL`,
+    const changed = await this.db.$executeRawUnsafe(
+      `UPDATE card_system.card_records
+       SET streak = $3, interval_days = $4, next_review_at = $5,
+           updated_at = CURRENT_TIMESTAMP
+       WHERE workspace_id = $1 AND card_id = $2::uuid AND deleted_at IS NULL`,
+      workspaceId,
+      cardId,
+      nonNegativeInteger(input.streak, 'streak'),
+      nonNegativeInteger(input.intervalDays, 'intervalDays'),
+      date(input.nextReviewAt, 'nextReviewAt')
+    );
+    if (!changed) throw new BadRequestException('Card not found');
+    return (
+      await this.listCardsWith(this.db, workspaceId, undefined, true, cardId)
+    )[0];
+  }
+
+  async setCardDeleted(workspaceId: string, cardId: string, deleted: boolean) {
+    const changed = await this.db.$executeRawUnsafe(
+      `UPDATE card_system.card_records
+       SET deleted_at = CASE WHEN $3 THEN COALESCE(deleted_at, CURRENT_TIMESTAMP) ELSE NULL END,
+           updated_at = CURRENT_TIMESTAMP
+       WHERE workspace_id = $1 AND card_id = $2::uuid`,
+      workspaceId,
+      cardId,
+      deleted
+    );
+    if (!changed) throw new BadRequestException('Card not found');
+    return (
+      await this.listCardsWith(this.db, workspaceId, undefined, true, cardId)
+    )[0];
+  }
+
+  private async addMembership(
+    db: SqlClient,
+    cardId: string,
+    collectionId: string
+  ) {
+    await db.$executeRawUnsafe(
+      `INSERT INTO card_system.card_collection_memberships (card_id, collection_id)
+       VALUES ($1::uuid, $2::uuid)
+       ON CONFLICT (card_id, collection_id) DO NOTHING`,
+      cardId,
+      collectionId
+    );
+  }
+
+  async addCardToCollection(
+    workspaceId: string,
+    cardId: string,
+    collectionId: string
+  ) {
+    return this.db.$transaction(async tx => {
+      await this.assertActiveCollection(tx, workspaceId, collectionId);
+      const cards = await this.listCardsWith(
+        tx,
         workspaceId,
-        cardId,
-        nonNegativeInteger(input.streak, "streak"),
-        nonNegativeInteger(input.intervalDays, "intervalDays"),
-        date(input.nextReviewAt, "nextReviewAt"),
+        undefined,
+        false,
+        cardId
       );
-      if (!changed) throw new BadRequestException("Card not found");
-      await tx.$executeRawUnsafe(
-        `UPDATE card_system.cards SET updated_at = CURRENT_TIMESTAMP
-         WHERE workspace_id = $1 AND card_id = $2::uuid`,
-        workspaceId,
-        cardId,
-      );
+      if (!cards[0]) throw new BadRequestException('Card not found');
+      await this.addMembership(tx, cardId, collectionId);
       return (
         await this.listCardsWith(tx, workspaceId, undefined, true, cardId)
       )[0];
     });
   }
 
-  async setCardDeleted(workspaceId: string, cardId: string, deleted: boolean) {
-    const rows = await this.query<{ card_id: string }>(
-      this.db,
-      `UPDATE card_system.cards
-       SET deleted_at = CASE WHEN $3 THEN COALESCE(deleted_at, CURRENT_TIMESTAMP) ELSE NULL END,
-           updated_at = CURRENT_TIMESTAMP
-       WHERE workspace_id = $1 AND card_id = $2::uuid
-       RETURNING card_id`,
+  async removeCardFromCollection(
+    workspaceId: string,
+    cardId: string,
+    collectionId: string
+  ) {
+    const changed = await this.db.$executeRawUnsafe(
+      `DELETE FROM card_system.card_collection_memberships membership
+       USING card_system.card_records card, card_system.collections collection
+       WHERE membership.card_id = card.card_id
+         AND membership.collection_id = collection.collection_id
+         AND card.workspace_id = $1 AND collection.workspace_id = $1
+         AND card.card_id = $2::uuid
+         AND collection.collection_id = $3::uuid`,
       workspaceId,
       cardId,
-      deleted,
+      collectionId
     );
-    if (!rows[0]) throw new BadRequestException("Card not found");
+    if (!changed)
+      throw new BadRequestException('Collection membership not found');
     return (
       await this.listCardsWith(this.db, workspaceId, undefined, true, cardId)
     )[0];
@@ -404,95 +426,83 @@ export class CardSystemRepository {
 
   async importLegacy(
     workspaceId: string,
-    input: LegacyImport,
+    input: LegacyImport
   ): Promise<LegacyImportResult> {
     if (!Array.isArray(input.decks) || !Array.isArray(input.cards)) {
-      throw new BadRequestException("Invalid legacy import");
+      throw new BadRequestException('Invalid legacy import');
     }
     if (input.decks.length > 10_000 || input.cards.length > 100_000) {
-      throw new BadRequestException("Legacy import is too large");
+      throw new BadRequestException('Legacy import is too large');
     }
-    return this.db.$transaction(async (tx) => {
+    return this.db.$transaction(async tx => {
       await tx.$executeRawUnsafe(
-        "SELECT pg_advisory_xact_lock(hashtextextended($1, 0))",
-        `card-system-import:${workspaceId}`,
+        'SELECT pg_advisory_xact_lock(hashtextextended($1, 0))',
+        `card-system-import:${workspaceId}`
       );
       const deckIds: Record<string, string> = {};
       const cardIds: Record<string, string> = {};
 
       for (const legacy of input.decks) {
-        requiredText(legacy.id, "legacy deck id", 1024);
-        const existing = await this.legacyMapping(
+        requiredText(legacy.id, 'legacy collection id', 1024);
+        const mapped = await this.legacyMapping(
           tx,
           workspaceId,
-          "deck",
-          legacy.id,
+          'deck',
+          legacy.id
         );
-        if (existing) {
-          deckIds[legacy.id] = existing;
-          continue;
-        }
-        const id = await this.availableId(tx, legacy.id);
+        const id = mapped ?? (await this.availableId(tx, legacy.id));
         await tx.$executeRawUnsafe(
-          `INSERT INTO card_system.decks
-             (deck_id, workspace_id, name, created_at, updated_at)
-           VALUES ($1::uuid, $2, $3, $4, $5)`,
+          `INSERT INTO card_system.collections
+             (collection_id, workspace_id, name, created_at, updated_at)
+           VALUES ($1::uuid, $2, $3, $4, $5)
+           ON CONFLICT (collection_id) DO NOTHING`,
           id,
           workspaceId,
-          requiredText(legacy.name, "deck name", 1024).trim(),
-          date(legacy.createdAt, "createdAt"),
-          date(legacy.updatedAt, "updatedAt"),
+          requiredText(legacy.name, 'collection name', 1024).trim(),
+          date(legacy.createdAt, 'createdAt'),
+          date(legacy.updatedAt, 'updatedAt')
         );
-        await this.saveLegacyMapping(tx, workspaceId, "deck", legacy.id, id);
+        if (!mapped) {
+          await this.saveLegacyMapping(tx, workspaceId, 'deck', legacy.id, id);
+        }
         deckIds[legacy.id] = id;
       }
 
       for (const legacy of input.cards) {
-        requiredText(legacy.id, "legacy card id", 1024);
-        const existing = await this.legacyMapping(
+        requiredText(legacy.id, 'legacy card id', 1024);
+        const mapped = await this.legacyMapping(
           tx,
           workspaceId,
-          "card",
-          legacy.id,
+          'card',
+          legacy.id
         );
-        if (existing) {
-          cardIds[legacy.id] = existing;
-          continue;
-        }
-        const deckId =
+        const id = mapped ?? (await this.availableId(tx, legacy.id));
+        const collectionId =
           deckIds[legacy.deckId] ??
-          (await this.legacyMapping(tx, workspaceId, "deck", legacy.deckId));
-        if (!deckId)
-          throw new BadRequestException("Legacy card deck not found");
-        const id = await this.availableId(tx, legacy.id);
+          (await this.legacyMapping(tx, workspaceId, 'deck', legacy.deckId));
+        if (!collectionId) {
+          throw new BadRequestException('Legacy card collection not found');
+        }
         await tx.$executeRawUnsafe(
-          `INSERT INTO card_system.cards
-             (card_id, workspace_id, deck_id, card_kind, created_at, updated_at)
-           VALUES ($1::uuid, $2, $3::uuid, 'manual', $4, $5)`,
+          `INSERT INTO card_system.card_records
+             (card_id, workspace_id, card_type, front, back,
+              streak, interval_days, next_review_at, created_at, updated_at)
+           VALUES ($1::uuid, $2, 'basic', $3, $4, $5, $6, $7, $8, $9)
+           ON CONFLICT (card_id) DO NOTHING`,
           id,
           workspaceId,
-          deckId,
-          date(legacy.createdAt, "createdAt"),
-          date(legacy.updatedAt, "updatedAt"),
+          requiredText(legacy.front, 'card front'),
+          requiredText(legacy.back, 'card back'),
+          nonNegativeInteger(legacy.streak, 'streak'),
+          nonNegativeInteger(legacy.intervalDays, 'intervalDays'),
+          date(legacy.nextReviewAt, 'nextReviewAt'),
+          date(legacy.createdAt, 'createdAt'),
+          date(legacy.updatedAt, 'updatedAt')
         );
-        await tx.$executeRawUnsafe(
-          `INSERT INTO card_system.manual_card_content (card_id, front, back)
-           VALUES ($1::uuid, $2, $3)`,
-          id,
-          requiredText(legacy.front, "card front"),
-          requiredText(legacy.back, "card back"),
-        );
-        await tx.$executeRawUnsafe(
-          `INSERT INTO card_system.review_state
-             (card_id, streak, interval_days, next_review_at, updated_at)
-           VALUES ($1::uuid, $2, $3, $4, $5)`,
-          id,
-          nonNegativeInteger(legacy.streak, "streak"),
-          nonNegativeInteger(legacy.intervalDays, "intervalDays"),
-          date(legacy.nextReviewAt, "nextReviewAt"),
-          date(legacy.updatedAt, "updatedAt"),
-        );
-        await this.saveLegacyMapping(tx, workspaceId, "card", legacy.id, id);
+        await this.addMembership(tx, id, collectionId);
+        if (!mapped) {
+          await this.saveLegacyMapping(tx, workspaceId, 'card', legacy.id, id);
+        }
         cardIds[legacy.id] = id;
       }
 
@@ -505,13 +515,19 @@ export class CardSystemRepository {
     });
   }
 
-  private async listDecksWith(db: SqlClient, workspaceId: string) {
+  private async listDecksWith(
+    db: SqlClient,
+    workspaceId: string,
+    includeDeleted = false
+  ) {
     const rows = await this.query<DeckRow>(
       db,
-      `SELECT deck_id, name, created_at, updated_at, deleted_at
-       FROM card_system.decks
-       WHERE workspace_id = $1 AND deleted_at IS NULL ORDER BY created_at ASC`,
+      `SELECT collection_id, name, created_at, updated_at, deleted_at
+       FROM card_system.collections
+       WHERE workspace_id = $1 AND ($2::boolean OR deleted_at IS NULL)
+       ORDER BY created_at ASC`,
       workspaceId,
+      includeDeleted
     );
     return rows.map(deckRecord);
   }
@@ -519,8 +535,8 @@ export class CardSystemRepository {
   private async legacyMapping(
     db: SqlClient,
     workspaceId: string,
-    type: "deck" | "card",
-    legacyId: string,
+    type: 'deck' | 'card',
+    legacyId: string
   ) {
     const rows = await this.query<{ entity_id: string }>(
       db,
@@ -528,7 +544,7 @@ export class CardSystemRepository {
        WHERE workspace_id = $1 AND entity_type = $2 AND legacy_id = $3`,
       workspaceId,
       type,
-      legacyId,
+      legacyId
     );
     return rows[0]?.entity_id;
   }
@@ -536,18 +552,19 @@ export class CardSystemRepository {
   private async saveLegacyMapping(
     db: SqlClient,
     workspaceId: string,
-    type: "deck" | "card",
+    type: 'deck' | 'card',
     legacyId: string,
-    id: string,
+    id: string
   ) {
     await db.$executeRawUnsafe(
       `INSERT INTO card_system.legacy_id_map
          (workspace_id, entity_type, legacy_id, entity_id)
-       VALUES ($1, $2, $3, $4::uuid)`,
+       VALUES ($1, $2, $3, $4::uuid)
+       ON CONFLICT (workspace_id, entity_type, legacy_id) DO NOTHING`,
       workspaceId,
       type,
       legacyId,
-      id,
+      id
     );
   }
 
@@ -556,11 +573,11 @@ export class CardSystemRepository {
     const rows = await this.query<{ used: boolean }>(
       db,
       `SELECT EXISTS (
-         SELECT 1 FROM card_system.decks WHERE deck_id = $1::uuid
+         SELECT 1 FROM card_system.collections WHERE collection_id = $1::uuid
          UNION ALL
-         SELECT 1 FROM card_system.cards WHERE card_id = $1::uuid
+         SELECT 1 FROM card_system.card_records WHERE card_id = $1::uuid
        ) AS used`,
-      preferred,
+      preferred
     );
     return rows[0]?.used ? crypto.randomUUID() : preferred;
   }

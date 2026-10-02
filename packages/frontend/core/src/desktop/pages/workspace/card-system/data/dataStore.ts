@@ -1,4 +1,4 @@
-import type { Card, Deck } from "./model";
+import type { Card, Deck } from './model';
 
 export interface DataStore {
   upsertDeck(deck: Deck): Promise<Deck>;
@@ -9,8 +9,6 @@ export interface DataStore {
 
   deleteDeck(id: string): Promise<void>;
 
-  restoreDeck(id: string): Promise<Deck>;
-
   upsertCard(card: Card): Promise<Card>;
 
   getCard(id: string): Promise<Card | undefined>;
@@ -18,6 +16,4 @@ export interface DataStore {
   getCards(deckId: string): Promise<Card[]>;
 
   deleteCard(id: string): Promise<void>;
-
-  restoreCard(id: string): Promise<Card>;
 }

@@ -28,6 +28,7 @@ import {
 import { WorkspaceNavigator } from '../../../components/workspace-selector';
 import { AuthService } from '../../../modules/cloud';
 import { AppContainer } from '../../components/app-container';
+import { selectStartupWorkspace } from './workspace-selection';
 
 /**
  * index page
@@ -131,8 +132,10 @@ export const Component = ({
       // open last workspace
       const lastId = localStorage.getItem('last_workspace_id');
 
-      const openWorkspace = list.find(w => w.id === lastId) ?? list[0];
-      openPage(openWorkspace.id, defaultIndexRoute, RouteLogic.REPLACE);
+      const openWorkspace = selectStartupWorkspace(list, lastId, loggedIn);
+      if (openWorkspace) {
+        openPage(openWorkspace.id, defaultIndexRoute, RouteLogic.REPLACE);
+      }
     }
   }, [
     enableLocalWorkspace,

@@ -8,3 +8,4 @@ export * from './1786805802350-backfill-transcript-storage-keys';
 export * from './1786810000000-converge-managed-provider-profiles';
 export * from './1786820000000-migrate-legacy-context-blob-artifacts';
 export * from './1790812800000-create-card-system';
+export * from './1790899200000-simplify-card-system-domain';

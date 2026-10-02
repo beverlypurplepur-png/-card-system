@@ -1,6 +1,4 @@
-export type CardKind = "manual" | "affine_ref";
-
-export type DeckRecord = {
+export type CollectionRecord = {
   id: string;
   name: string;
   createdAt: string;
@@ -8,12 +6,21 @@ export type DeckRecord = {
   deletedAt: string | null;
 };
 
-export type ManualCardRecord = {
+// The BaraBara UI still calls collections "decks". This alias keeps its
+// adapter surface stable while the persisted domain uses Collection.
+export type DeckRecord = CollectionRecord;
+
+export type CardRecord = {
   id: string;
+  cardType: string;
+  collectionIds: string[];
   deckId: string | null;
-  kind: "manual";
   front: string;
   back: string;
+  affineDocumentId: string | null;
+  affineFrameId: string | null;
+  states: Record<string, unknown>;
+  metadata: Record<string, unknown>;
   createdAt: string;
   updatedAt: string;
   deletedAt: string | null;
@@ -21,20 +28,6 @@ export type ManualCardRecord = {
   intervalDays: number;
   nextReviewAt: string;
 };
-
-export type AffineReferenceRecord = {
-  id: string;
-  deckId: string | null;
-  kind: "affine_ref";
-  sourceType: "page" | "frame";
-  documentId: string;
-  blockId: string | null;
-  createdAt: string;
-  updatedAt: string;
-  deletedAt: string | null;
-};
-
-export type CardRecord = ManualCardRecord | AffineReferenceRecord;
 
 export type LegacyImport = {
   decks: Array<{
@@ -60,5 +53,5 @@ export type LegacyImportResult = {
   deckIds: Record<string, string>;
   cardIds: Record<string, string>;
   decks: DeckRecord[];
-  cards: ManualCardRecord[];
+  cards: CardRecord[];
 };
