@@ -1,8 +1,8 @@
 import { Markdown } from "./Markdown";
 import { useNavigate, useParams } from "../router";
+import { useDataStore } from "../context/DataContext";
 import { useCallback, useEffect, useState } from "react";
 import type { Card } from "../data/model";
-import { dataStore } from "../data/localDataStore";
 import Layout from "./Layout";
 import { CardModal } from "./CardModal";
 import { ConfirmModal } from "./ConfirmModal";
@@ -16,6 +16,7 @@ export interface ReviewPageProps {
 export function ReviewPage({ studyMode }: ReviewPageProps) {
   const { deckId } = useParams();
   const navigate = useNavigate();
+  const { dataStore } = useDataStore();
   const [cards, setCards] = useState<Card[]>([]);
   const [currentCardIndex, setCurrentCardIndex] = useState(0);
   const [phase, setPhase] = useState<ReviewPagePhase>("front");
@@ -35,7 +36,7 @@ export function ReviewPage({ studyMode }: ReviewPageProps) {
     } else {
       return cards;
     }
-  }, [deckId, studyMode]);
+  }, [dataStore, deckId, studyMode]);
 
   useEffect(() => {
     getCardsDueForReview().then(setCards);

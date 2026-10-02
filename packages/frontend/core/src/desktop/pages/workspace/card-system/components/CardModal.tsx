@@ -1,7 +1,7 @@
 import type { Card } from "../data/model";
 import { Modal } from "./Modal";
 import CardForm from "./CardForm";
-import { dataStore } from "../data/localDataStore";
+import { useDataStore } from "../context/DataContext";
 
 export type CardModalMode = "create" | "edit";
 
@@ -24,6 +24,7 @@ export function CardModal({
   onCreated,
   onUpdated,
 }: CardModalProps) {
+  const { dataStore } = useDataStore();
   const title = mode === "create" ? "Create Card" : "Edit Card";
   const submitLabel = mode === "create" ? "Create Card" : "Update Card";
 

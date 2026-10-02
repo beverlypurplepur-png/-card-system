@@ -1,4 +1,5 @@
 import { DataProvider } from "./context/DataContext";
+import type { AffineCardDataStore } from "./data/affineCardDataStore";
 import { CreateDeckPage } from "./components/CreateDeckPage";
 import { DashboardPage } from "./components/DashboardPage";
 import Home from "./components/Home";
@@ -22,8 +23,12 @@ const BaraBaraRoutes = () => {
   return <DashboardPage />;
 };
 
-export const BaraBaraApp = () => (
-  <DataProvider>
+export const BaraBaraApp = ({
+  dataStore,
+}: {
+  dataStore: AffineCardDataStore;
+}) => (
+  <DataProvider dataStore={dataStore}>
     <BaraBaraRouter>
       <BaraBaraRoutes />
     </BaraBaraRouter>

@@ -31,6 +31,7 @@ import {
   BackendRuntimeModule,
   BackendRuntimeWorkerModule,
 } from './core/backend-runtime';
+import { CardSystemModule } from './core/card-system';
 import { CommentModule } from './core/comment';
 import { ServerConfigModule, ServerConfigResolverModule } from './core/config';
 import { DocStorageModule } from './core/doc';
@@ -189,7 +190,13 @@ export function buildAppModule(env: Env) {
     // business modules
     .use(ServerConfigModule, QuotaModule, DocStorageModule)
     .useIf(() => env.isWorker, StorageWorkerModule)
-    .useIf(() => !workerOnly, FeatureModule, NotificationModule, MailModule)
+    .useIf(
+      () => !workerOnly,
+      FeatureModule,
+      NotificationModule,
+      MailModule,
+      CardSystemModule
+    )
     // renderer server and front server
     .useIf(() => env.flavors.renderer || env.flavors.front, DocRendererModule)
     // sync server and front server

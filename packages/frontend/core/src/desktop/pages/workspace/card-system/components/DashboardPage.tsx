@@ -2,7 +2,6 @@ import Layout from "./Layout";
 import { Link, useNavigate } from "../router";
 import { useDataStore } from "../context/DataContext";
 import { useEffect, useState } from "react";
-import { dataStore } from "../data/localDataStore";
 import type { Deck } from "../data/model";
 
 export const DashboardPage = () => {
@@ -151,6 +150,7 @@ export const DashboardPage = () => {
 };
 
 function DeckCard({ deck, isDark }: { deck: Deck; isDark: boolean }) {
+  const { dataStore } = useDataStore();
   const [numberOfCardsToStudy, setNumberOfCardsToStudy] = useState(0);
   const [totalCards, setTotalCards] = useState(0);
 
@@ -162,7 +162,7 @@ function DeckCard({ deck, isDark }: { deck: Deck; isDark: boolean }) {
       setNumberOfCardsToStudy(due.length);
       setTotalCards(cards.length);
     });
-  }, [deck.id]);
+  }, [dataStore, deck.id]);
 
   return (
     <Link to={`/decks/${deck.id}`}>

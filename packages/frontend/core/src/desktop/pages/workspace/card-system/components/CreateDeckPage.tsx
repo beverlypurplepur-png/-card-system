@@ -1,11 +1,12 @@
 import Layout from "./Layout";
 import { useNavigate } from "../router";
+import { useDataStore } from "../context/DataContext";
 import CreateDeckForm from "./CreateDeckForm";
 import type { CreateDeckInput } from "./CreateDeckForm";
-import { dataStore } from "../data/localDataStore";
 
 export function CreateDeckPage() {
   const navigate = useNavigate();
+  const { dataStore } = useDataStore();
 
   const createDeck = async (input: CreateDeckInput) => {
     const createdDeck = await dataStore.upsertDeck({

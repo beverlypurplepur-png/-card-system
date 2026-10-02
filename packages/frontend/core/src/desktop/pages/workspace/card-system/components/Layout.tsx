@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from "react";
 import { useDataStore } from "../context/DataContext";
-import { dataStore } from "../data/localDataStore";
 
 export interface Link {
   key: string;
@@ -18,7 +17,7 @@ export default function Layout({
   onNavigate?: (href: string, key: string) => void;
 }) {
   const [open, setOpen] = useState(false);
-  const { decks, setDecks } = useDataStore();
+  const { decks, setDecks, dataStore } = useDataStore();
 
   const deckLinks: Link[] = decks.map((deck) => ({
     key: deck.id,
@@ -35,7 +34,7 @@ export default function Layout({
     return () => {
       mounted = false;
     };
-  }, [setDecks]);
+  }, [dataStore, setDecks]);
 
   function handleNavClick(e: React.MouseEvent, href: string, key: string) {
     if (onNavigate) {

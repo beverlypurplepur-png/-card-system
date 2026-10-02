@@ -1,23 +1,40 @@
-import React, { createContext, useContext, useState } from "react";
+import React, { createContext, useContext, useEffect, useState } from "react";
+import type { AffineCardDataStore } from "../data/affineCardDataStore";
 import type { Deck } from "../data/model";
 
 interface DataContextType {
   decks: Deck[];
   setDecks: (decks: Deck[]) => void;
+  dataStore: AffineCardDataStore;
 }
 
 const DataContext = createContext<DataContextType | undefined>(undefined);
 
 interface DataProviderProps {
   children: React.ReactNode;
+  dataStore: AffineCardDataStore;
 }
 
-export const DataProvider = ({ children }: DataProviderProps) => {
+export const DataProvider = ({ children, dataStore }: DataProviderProps) => {
   const [decks, setDecks] = useState<Deck[]>([]);
+
+  useEffect(() => {
+    let active = true;
+    void dataStore
+      .migrateLocalStorage()
+      .then(() => dataStore.getDecks())
+      .then((nextDecks) => {
+        if (active) setDecks(nextDecks);
+      });
+    return () => {
+      active = false;
+    };
+  }, [dataStore]);
 
   const contextValue: DataContextType = {
     decks,
     setDecks,
+    dataStore,
   };
 
   return (

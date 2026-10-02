@@ -3,7 +3,6 @@ import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "../router";
 import type { Card, Deck } from "../data/model";
 import Layout from "./Layout";
-import { dataStore } from "../data/localDataStore";
 import { CardModal } from "./CardModal";
 import { ConfirmModal } from "./ConfirmModal";
 import { useDataStore } from "../context/DataContext";
@@ -12,7 +11,7 @@ export function ViewDeckPage() {
   const { deckId } = useParams();
   const navigate = useNavigate();
   const [deck, setDeck] = useState<Deck | undefined>(undefined);
-  const { decks: allDecks, setDecks: setAllDecks } = useDataStore();
+  const { decks: allDecks, setDecks: setAllDecks, dataStore } = useDataStore();
   const [isRenamingDeck, setIsRenamingDeck] = useState(false);
   const [deckNameDraft, setDeckNameDraft] = useState("");
   const [currentPageNumber, setCurrentPageNumber] = useState(1);
@@ -44,7 +43,7 @@ export function ViewDeckPage() {
     return () => {
       mounted = false;
     };
-  }, [deckId]);
+  }, [dataStore, deckId]);
 
   useEffect(() => {
     if (!isRenamingDeck) return;

@@ -1,12 +1,22 @@
-import { useLayoutEffect, useRef, useState } from "react";
+import { FetchService } from "@affine/core/modules/cloud";
+import { WorkspaceService } from "@affine/core/modules/workspace";
+import { useService } from "@toeverything/infra";
+import { useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
 import { BaraBaraApp } from "./app";
+import { AffineCardDataStore } from "./data/affineCardDataStore";
 import { baraBaraStyles } from "./styles";
 
 const CardSystemPage = () => {
+  const workspaceId = useService(WorkspaceService).workspace.id;
+  const request = useService(FetchService).fetch;
   const hostRef = useRef<HTMLDivElement>(null);
   const [root, setRoot] = useState<ShadowRoot | null>(null);
+  const dataStore = useMemo(
+    () => new AffineCardDataStore(request, workspaceId),
+    [request, workspaceId],
+  );
 
   useLayoutEffect(() => {
     const host = hostRef.current;
@@ -27,7 +37,7 @@ const CardSystemPage = () => {
       ref={hostRef}
       style={{ display: "block", height: "100%", overflow: "auto" }}
     >
-      {root ? createPortal(<BaraBaraApp />, root) : null}
+      {root ? createPortal(<BaraBaraApp dataStore={dataStore} />, root) : null}
     </div>
   );
 };
