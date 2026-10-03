@@ -28,7 +28,10 @@ import {
 import { WorkspaceNavigator } from '../../../components/workspace-selector';
 import { AuthService } from '../../../modules/cloud';
 import { AppContainer } from '../../components/app-container';
-import { selectStartupWorkspace } from './workspace-selection';
+import {
+  selectStartupWorkspace,
+  shouldBootstrapLocalWorkspace,
+} from './workspace-selection';
 
 /**
  * index page
@@ -157,7 +160,15 @@ export const Component = ({
   }, [desktopApi]);
 
   useEffect(() => {
-    if (listIsLoading || list.length > 0 || !enableLocalWorkspace) {
+    if (
+      !shouldBootstrapLocalWorkspace({
+        enableLocalWorkspace,
+        isMobileWeb: BUILD_CONFIG.isMobileWeb,
+        isWeb: BUILD_CONFIG.isWeb,
+        listIsLoading,
+        workspaceCount: list.length,
+      })
+    ) {
       return;
     }
 
