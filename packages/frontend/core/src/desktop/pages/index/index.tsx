@@ -95,7 +95,10 @@ export const Component = ({
   }, [defaultIndexRoute, jumpToPage, openPage, workspacesService]);
 
   useLayoutEffect(() => {
-    if (!navigating) {
+    // The index can reach its empty state before a login-triggered cloud
+    // workspace revalidation completes. Keep observing the list so a cloud
+    // workspace that arrives later can still be opened.
+    if (!navigating && list.length === 0) {
       return;
     }
 
